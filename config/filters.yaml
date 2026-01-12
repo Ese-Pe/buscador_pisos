@@ -13,10 +13,8 @@ global:
   
   # Tipo de inmueble: 'piso', 'casa', 'atico', 'duplex', 'estudio', 'todos'
   property_types:
-    - "piso"
-    - "atico"
-    - "duplex"
-
+    - "todos"
+    
 # -----------------------------------------------------------------------------
 # PERFILES DE BÚSQUEDA
 # -----------------------------------------------------------------------------
@@ -24,35 +22,31 @@ global:
 # Cada perfil genera búsquedas independientes
 
 profiles:
-  # ----- Perfil 1: Madrid Centro -----
+  # ----- Perfil 1: Zaragoza Santi -----
   madrid_centro:
     enabled: true
-    name: "Madrid Centro"
+    name: "Zaragoza Santi"
     
     # Ubicación
     location:
-      province: "Madrid"
-      city: "Madrid"
+      province: "Zaragoza"
+      city: "Zaragoza"
       zones:
-        - "Centro"
-        - "Chamberí"
-        - "Salamanca"
-        - "Retiro"
-        - "Arganzuela"
+        - 
     
     # Precio (en euros)
     price:
-      min: 150000
-      max: 350000
+      min: 0
+      max: 315000
     
     # Superficie (en m²)
     surface:
-      min: 60
+      min: 90
       max: null  # null = sin límite
     
     # Habitaciones
     bedrooms:
-      min: 2
+      min: 3
       max: null
     
     # Baños
@@ -62,8 +56,8 @@ profiles:
     
     # Características adicionales (opcional)
     features:
-      elevator: null      # true, false, o null (indiferente)
-      parking: null       # true, false, o null
+      elevator: true      # true, false, o null (indiferente)
+      parking: true       # true, false, o null
       storage_room: null  # trastero
       pool: null          # piscina
       terrace: null       # terraza
@@ -77,29 +71,27 @@ profiles:
     
     # Planta/Piso
     floor:
-      min: null           # null = indiferente
+      min: 2           # null = indiferente
       max: null
       exterior: null      # true = solo exteriores
 
-  # ----- Perfil 2: Barcelona Eixample -----
+  # ----- Perfil 2: Zaragoza Edu -----
   barcelona_eixample:
     enabled: true
-    name: "Barcelona Eixample"
+    name: "Zaragoza Edu"
     
     location:
-      province: "Barcelona"
-      city: "Barcelona"
+      province: "Zaragoza"
+      city: "Zaragoza"
       zones:
-        - "Eixample"
-        - "Gràcia"
-        - "Sant Martí"
+        - 
     
     price:
-      min: 200000
-      max: 400000
+      min: 0
+      max: 180000
     
     surface:
-      min: 70
+      min: 50
       max: null
     
     bedrooms:
@@ -115,82 +107,6 @@ profiles:
       parking: null
       storage_room: null
       pool: null
-      terrace: null
-      air_conditioning: null
-      heating: null
-      furnished: null
-
-  # ----- Perfil 3: Valencia Ciudad -----
-  valencia_ciudad:
-    enabled: false  # Deshabilitado por defecto
-    name: "Valencia Ciudad"
-    
-    location:
-      province: "Valencia"
-      city: "Valencia"
-      zones:
-        - "Ciutat Vella"
-        - "L'Eixample"
-        - "Extramurs"
-        - "Ruzafa"
-    
-    price:
-      min: 100000
-      max: 250000
-    
-    surface:
-      min: 60
-      max: null
-    
-    bedrooms:
-      min: 2
-      max: null
-    
-    bathrooms:
-      min: 1
-      max: null
-    
-    features:
-      elevator: null
-      parking: null
-      storage_room: null
-      pool: null
-      terrace: null
-      air_conditioning: null
-      heating: null
-      furnished: null
-
-  # ----- Perfil 4: Costa (ejemplo deshabilitado) -----
-  costa_mediterranea:
-    enabled: false
-    name: "Costa Mediterránea"
-    
-    location:
-      province: "Alicante"
-      city: null  # Cualquier ciudad
-      zones: []   # Cualquier zona
-    
-    price:
-      min: 80000
-      max: 200000
-    
-    surface:
-      min: 50
-      max: null
-    
-    bedrooms:
-      min: 1
-      max: null
-    
-    bathrooms:
-      min: 1
-      max: null
-    
-    features:
-      elevator: null
-      parking: true
-      storage_room: null
-      pool: true
       terrace: null
       air_conditioning: null
       heating: null
