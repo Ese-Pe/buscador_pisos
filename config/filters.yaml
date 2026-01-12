@@ -1,0 +1,225 @@
+# =============================================================================
+# REAL ESTATE BOT - Filtros de Búsqueda
+# =============================================================================
+# Define aquí los criterios de búsqueda para los anuncios
+# Puedes crear múltiples perfiles de búsqueda
+
+# -----------------------------------------------------------------------------
+# FILTROS GLOBALES (aplicados a todas las búsquedas)
+# -----------------------------------------------------------------------------
+global:
+  # Tipo de operación: 'compra', 'alquiler', 'ambos'
+  operation_type: "compra"
+  
+  # Tipo de inmueble: 'piso', 'casa', 'atico', 'duplex', 'estudio', 'todos'
+  property_types:
+    - "piso"
+    - "atico"
+    - "duplex"
+
+# -----------------------------------------------------------------------------
+# PERFILES DE BÚSQUEDA
+# -----------------------------------------------------------------------------
+# Puedes definir múltiples perfiles con diferentes criterios
+# Cada perfil genera búsquedas independientes
+
+profiles:
+  # ----- Perfil 1: Madrid Centro -----
+  madrid_centro:
+    enabled: true
+    name: "Madrid Centro"
+    
+    # Ubicación
+    location:
+      province: "Madrid"
+      city: "Madrid"
+      zones:
+        - "Centro"
+        - "Chamberí"
+        - "Salamanca"
+        - "Retiro"
+        - "Arganzuela"
+    
+    # Precio (en euros)
+    price:
+      min: 150000
+      max: 350000
+    
+    # Superficie (en m²)
+    surface:
+      min: 60
+      max: null  # null = sin límite
+    
+    # Habitaciones
+    bedrooms:
+      min: 2
+      max: null
+    
+    # Baños
+    bathrooms:
+      min: 1
+      max: null
+    
+    # Características adicionales (opcional)
+    features:
+      elevator: null      # true, false, o null (indiferente)
+      parking: null       # true, false, o null
+      storage_room: null  # trastero
+      pool: null          # piscina
+      terrace: null       # terraza
+      air_conditioning: null
+      heating: null
+      furnished: null     # amueblado
+    
+    # Antigüedad del edificio (años)
+    building_age:
+      max_years: null     # null = indiferente
+    
+    # Planta/Piso
+    floor:
+      min: null           # null = indiferente
+      max: null
+      exterior: null      # true = solo exteriores
+
+  # ----- Perfil 2: Barcelona Eixample -----
+  barcelona_eixample:
+    enabled: true
+    name: "Barcelona Eixample"
+    
+    location:
+      province: "Barcelona"
+      city: "Barcelona"
+      zones:
+        - "Eixample"
+        - "Gràcia"
+        - "Sant Martí"
+    
+    price:
+      min: 200000
+      max: 400000
+    
+    surface:
+      min: 70
+      max: null
+    
+    bedrooms:
+      min: 2
+      max: null
+    
+    bathrooms:
+      min: 1
+      max: null
+    
+    features:
+      elevator: true
+      parking: null
+      storage_room: null
+      pool: null
+      terrace: null
+      air_conditioning: null
+      heating: null
+      furnished: null
+
+  # ----- Perfil 3: Valencia Ciudad -----
+  valencia_ciudad:
+    enabled: false  # Deshabilitado por defecto
+    name: "Valencia Ciudad"
+    
+    location:
+      province: "Valencia"
+      city: "Valencia"
+      zones:
+        - "Ciutat Vella"
+        - "L'Eixample"
+        - "Extramurs"
+        - "Ruzafa"
+    
+    price:
+      min: 100000
+      max: 250000
+    
+    surface:
+      min: 60
+      max: null
+    
+    bedrooms:
+      min: 2
+      max: null
+    
+    bathrooms:
+      min: 1
+      max: null
+    
+    features:
+      elevator: null
+      parking: null
+      storage_room: null
+      pool: null
+      terrace: null
+      air_conditioning: null
+      heating: null
+      furnished: null
+
+  # ----- Perfil 4: Costa (ejemplo deshabilitado) -----
+  costa_mediterranea:
+    enabled: false
+    name: "Costa Mediterránea"
+    
+    location:
+      province: "Alicante"
+      city: null  # Cualquier ciudad
+      zones: []   # Cualquier zona
+    
+    price:
+      min: 80000
+      max: 200000
+    
+    surface:
+      min: 50
+      max: null
+    
+    bedrooms:
+      min: 1
+      max: null
+    
+    bathrooms:
+      min: 1
+      max: null
+    
+    features:
+      elevator: null
+      parking: true
+      storage_room: null
+      pool: true
+      terrace: null
+      air_conditioning: null
+      heating: null
+      furnished: null
+
+# -----------------------------------------------------------------------------
+# PALABRAS CLAVE (filtro adicional por texto)
+# -----------------------------------------------------------------------------
+keywords:
+  # Incluir anuncios que contengan estas palabras
+  include: []
+  #  - "reformado"
+  #  - "luminoso"
+  
+  # Excluir anuncios que contengan estas palabras
+  exclude: []
+  #  - "a reformar"
+  #  - "para reformar"
+  #  - "necesita reforma"
+
+# -----------------------------------------------------------------------------
+# EXCLUSIONES
+# -----------------------------------------------------------------------------
+exclusions:
+  # IDs de anuncios a ignorar permanentemente
+  listing_ids: []
+  
+  # URLs a ignorar
+  urls: []
+  
+  # Agencias/inmobiliarias a ignorar
+  agencies: []

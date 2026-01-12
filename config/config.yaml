@@ -1,0 +1,173 @@
+# =============================================================================
+# REAL ESTATE BOT - Configuración Principal
+# =============================================================================
+# Uso: Copia este archivo a config.local.yaml y modifica los valores
+# El archivo .local.yaml será ignorado por git
+
+# -----------------------------------------------------------------------------
+# CONFIGURACIÓN GENERAL
+# -----------------------------------------------------------------------------
+general:
+  # Modo de ejecución: 'production' o 'test'
+  # En modo test no se envían notificaciones reales
+  mode: "test"
+  
+  # Intervalo entre peticiones al mismo dominio (segundos)
+  request_delay_min: 3
+  request_delay_max: 5
+  
+  # Número máximo de reintentos por petición fallida
+  max_retries: 3
+  
+  # Factor de backoff exponencial para reintentos
+  retry_backoff_factor: 2
+  
+  # Timeout para peticiones HTTP (segundos)
+  request_timeout: 30
+  
+  # Respetar robots.txt de cada portal
+  respect_robots_txt: true
+  
+  # User agents rotativos (se selecciona uno aleatorio)
+  user_agents:
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0"
+    - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15"
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0"
+
+# -----------------------------------------------------------------------------
+# BASE DE DATOS
+# -----------------------------------------------------------------------------
+database:
+  # Ruta al archivo SQLite
+  path: "data/listings.db"
+  
+  # Días a mantener anuncios antiguos antes de limpiar
+  retention_days: 90
+
+# -----------------------------------------------------------------------------
+# LOGGING
+# -----------------------------------------------------------------------------
+logging:
+  # Nivel de logging: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+  
+  # Directorio para archivos de log
+  log_dir: "logs"
+  
+  # Formato del nombre de archivo de log
+  log_file_pattern: "bot_{date}.log"
+  
+  # Días a mantener archivos de log
+  retention_days: 30
+
+# -----------------------------------------------------------------------------
+# NOTIFICACIONES - EMAIL
+# -----------------------------------------------------------------------------
+email:
+  enabled: false
+  
+  # Configuración SMTP
+  smtp_server: "smtp.gmail.com"
+  smtp_port: 587
+  use_tls: true
+  
+  # Credenciales (usar variables de entorno en producción)
+  # SMTP_USERNAME y SMTP_PASSWORD
+  username: "${SMTP_USERNAME}"
+  password: "${SMTP_PASSWORD}"
+  
+  # Remitente y destinatarios
+  from_address: "tu-email@gmail.com"
+  to_addresses:
+    - "destinatario1@email.com"
+    - "destinatario2@email.com"
+  
+  # Asunto del email
+  subject_template: "🏠 {count} nuevos pisos encontrados - {date}"
+
+# -----------------------------------------------------------------------------
+# NOTIFICACIONES - TELEGRAM
+# -----------------------------------------------------------------------------
+telegram:
+  enabled: false
+  
+  # Token del bot (usar variable de entorno TELEGRAM_BOT_TOKEN)
+  bot_token: "${TELEGRAM_BOT_TOKEN}"
+  
+  # Chat IDs a notificar (usar variable de entorno TELEGRAM_CHAT_IDS)
+  # Formato: "123456789,987654321" (separados por coma)
+  chat_ids: "${TELEGRAM_CHAT_IDS}"
+  
+  # Formato de mensajes
+  parse_mode: "HTML"
+  
+  # Desactivar preview de enlaces
+  disable_web_page_preview: false
+
+# -----------------------------------------------------------------------------
+# PORTALES A ESCANEAR
+# -----------------------------------------------------------------------------
+# Habilita/deshabilita portales individuales
+portals:
+  # Agregadores principales
+  tucasa:
+    enabled: true
+    priority: 1
+  bienici:
+    enabled: true
+    priority: 1
+  yaencontre:
+    enabled: true
+    priority: 1
+  
+  # Portales bancarios
+  altamira:
+    enabled: true
+    priority: 2
+  haya:
+    enabled: true
+    priority: 2
+  solvia:
+    enabled: true
+    priority: 2
+  anticipa:
+    enabled: true
+    priority: 2
+  servihabitat:
+    enabled: true
+    priority: 2
+  aliseda:
+    enabled: true
+    priority: 2
+  bbva_valora:
+    enabled: true
+    priority: 2
+  bankinter:
+    enabled: true
+    priority: 3
+  kutxabank:
+    enabled: true
+    priority: 3
+  ibercaja:
+    enabled: true
+    priority: 3
+  cajamar:
+    enabled: true
+    priority: 3
+  comprarcasa:
+    enabled: true
+    priority: 3
+
+# -----------------------------------------------------------------------------
+# RENDER.COM - KEEP ALIVE
+# -----------------------------------------------------------------------------
+keep_alive:
+  enabled: true
+  
+  # URL del servicio en Render (configurar después del deploy)
+  service_url: "${RENDER_SERVICE_URL}"
+  
+  # Intervalo de ping en minutos (máximo 14 para plan gratuito)
+  ping_interval_minutes: 10
