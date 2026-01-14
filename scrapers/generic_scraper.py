@@ -278,7 +278,7 @@ PORTAL_CONFIGS = {
     'haya': {
         'name': 'haya',
         'base_url': 'https://www.haya.es',
-        'search_path': '/inmuebles/viviendas',
+        'search_path': '/comprar/viviendas',
         'param_mapping': {
             'province': 'provincia',
             'price_max': 'precio_hasta',
@@ -310,7 +310,7 @@ PORTAL_CONFIGS = {
     'aliseda': {
         'name': 'aliseda',
         'base_url': 'https://www.alisedainmobiliaria.com',
-        'search_path': '/buscador',
+        'search_path': '/venta/viviendas',
         'param_mapping': {
             'province': 'provincia',
             'price_max': 'precio_max',
