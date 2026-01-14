@@ -139,25 +139,25 @@ portals:
     enabled: true
     priority: 2
   aliseda:
-    enabled: true
+    enabled: false
     priority: 2
   bbva_valora:
-    enabled: true
+    enabled: false
     priority: 2
   bankinter:
-    enabled: true
+    enabled: false
     priority: 3
   kutxabank:
-    enabled: true
+    enabled: false
     priority: 3
   ibercaja:
-    enabled: true
+    enabled: false
     priority: 3
   cajamar:
-    enabled: true
+    enabled: false
     priority: 3
   comprarcasa:
-    enabled: true
+    enabled: false
     priority: 3
 
 # -----------------------------------------------------------------------------
