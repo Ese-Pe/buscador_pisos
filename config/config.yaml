@@ -10,7 +10,7 @@
 general:
   # Modo de ejecución: 'production' o 'test'
   # En modo test no se envían notificaciones reales
-  mode: "test"
+  mode: "production"
   
   # Intervalo entre peticiones al mismo dominio (segundos)
   request_delay_min: 3
@@ -26,7 +26,7 @@ general:
   request_timeout: 30
   
   # Respetar robots.txt de cada portal
-  respect_robots_txt: true
+  respect_robots_txt: false
   
   # User agents rotativos (se selecciona uno aleatorio)
   user_agents:
@@ -116,7 +116,7 @@ portals:
     enabled: true
     priority: 1
   bienici:
-    enabled: true
+    enabled: false
     priority: 1
   yaencontre:
     enabled: true
@@ -133,13 +133,13 @@ portals:
     enabled: true
     priority: 2
   anticipa:
-    enabled: true
+    enabled: false
     priority: 2
   servihabitat:
     enabled: true
     priority: 2
   aliseda:
-    enabled: false
+    enabled: true
     priority: 2
   bbva_valora:
     enabled: false
