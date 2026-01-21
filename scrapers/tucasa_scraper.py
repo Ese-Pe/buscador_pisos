@@ -112,7 +112,15 @@ class TucasaScraper(BaseScraper):
         return normalized
     
     def parse_listing_list(self, html: str) -> List[Dict[str, Any]]:
-        """Parsea la página de listado de Tucasa."""
+        """
+        Parsea la página de listado de Tucasa.
+
+        Tucasa usa Livewire (Laravel) y los datos están en atributos wire:initial-data
+        como JSON embebido, no en HTML tradicional.
+        """
+        import json
+        import html as html_lib
+
         soup = BeautifulSoup(html, 'html.parser')
         listings = []
 
@@ -121,16 +129,154 @@ class TucasaScraper(BaseScraper):
         if title:
             self.logger.debug(f"Page title: {title.get_text(strip=True)}")
 
-        # Tucasa usa diferentes selectores según la versión de la página
+        # Buscar componentes Livewire con nombre "inmueble-listado"
+        livewire_components = soup.find_all('div', {'wire:initial-data': True})
+
+        self.logger.debug(f"Found {len(livewire_components)} Livewire components")
+
+        listing_components = []
+        for component in livewire_components:
+            try:
+                data_attr = component.get('wire:initial-data', '')
+                # Decodificar HTML entities
+                data_json_str = html_lib.unescape(data_attr)
+                data = json.loads(data_json_str)
+
+                # Verificar que sea un componente de tipo inmueble-listado
+                if data.get('fingerprint', {}).get('name') == 'inmueble-listado':
+                    listing_components.append(data)
+
+            except (json.JSONDecodeError, AttributeError) as e:
+                self.logger.debug(f"Error parsing Livewire component: {e}")
+                continue
+
+        self.logger.debug(f"Found {len(listing_components)} inmueble-listado components")
+
+        if listing_components:
+            # Parsear datos de Livewire
+            for component_data in listing_components:
+                try:
+                    listing = self._parse_livewire_listing(component_data)
+                    if listing.get('url'):
+                        listings.append(listing)
+                except Exception as e:
+                    self.logger.debug(f"Error parseando Livewire listing: {e}")
+                    continue
+        else:
+            # Fallback al método antiguo si no hay componentes Livewire
+            self.logger.warning("No Livewire components found, trying old HTML parsing method")
+            listings = self._parse_traditional_html(soup)
+
+        return listings
+    
+    def _parse_livewire_listing(self, component_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Parsea un listing desde datos Livewire JSON.
+
+        Args:
+            component_data: Diccionario con datos del componente Livewire
+
+        Returns:
+            Diccionario con datos del listing
+        """
+        listing = {}
+
+        # Extraer datos del inmueble desde serverMemo.data.inmueble
+        inmueble = component_data.get('serverMemo', {}).get('data', {}).get('inmueble', {})
+
+        if not inmueble:
+            return listing
+
+        # URL
+        url = component_data.get('serverMemo', {}).get('data', {}).get('url', '')
+        if url:
+            listing['url'] = urljoin(self.base_url, url)
+
+        # Título
+        titulo = inmueble.get('titulo', '')
+        calle = inmueble.get('calle', '')
+        listing['title'] = f"{titulo} - {calle}" if titulo and calle else (titulo or calle or 'Sin título')
+
+        # Precio
+        precio = inmueble.get('eurosinmueble')
+        if precio:
+            try:
+                precio_float = float(precio)
+                listing['price'] = f"{int(precio_float):,} €".replace(',', '.')
+            except (ValueError, TypeError):
+                listing['price'] = str(precio)
+
+        # Ubicación
+        if calle:
+            listing['city'] = calle
+        zona_info = inmueble.get('arbolzona', '')
+        if zona_info:
+            # Parse: "Provincia: Zaragoza&&Comarca: Zaragoza Capital&&Localidad: Zaragoza Capital&&Distrito: Centro&&Barrio: "
+            parts = zona_info.split('&&')
+            for part in parts:
+                if 'Distrito:' in part:
+                    listing['district'] = part.split(':')[-1].strip()
+
+        # Superficie
+        metros_construidos = inmueble.get('metrosconstruidosinmueble')
+        metros_utiles = inmueble.get('metrosutilesinmueble')
+        if metros_construidos:
+            listing['surface'] = str(metros_construidos)
+        elif metros_utiles:
+            listing['surface'] = str(metros_utiles)
+
+        # Habitaciones
+        dormitorios = inmueble.get('dormitoriosinmueble')
+        if dormitorios:
+            listing['bedrooms'] = str(dormitorios)
+
+        # Baños
+        banyos = inmueble.get('banyosinmueble')
+        if banyos:
+            listing['bathrooms'] = str(banyos)
+
+        # Imágenes
+        imagenes_array = inmueble.get('imagenesarraycache', '')
+        if imagenes_array:
+            # Es una cadena separada por comas
+            listing['images'] = imagenes_array.split(',')[:5]  # Primeras 5 imágenes
+        else:
+            imagen_principal = inmueble.get('imagenprincipal', '')
+            if imagen_principal:
+                listing['images'] = [f"https://www.tucasa.com/cacheimg/small/{imagen_principal[-2:]}/{imagen_principal}.jpg"]
+
+        # Descripción
+        comentario = inmueble.get('comentarioinmueble', '')
+        if comentario:
+            listing['description'] = comentario[:500]  # Primeros 500 caracteres
+
+        # Referencia
+        referencia = inmueble.get('referenciainmueble', '')
+        if referencia:
+            listing['reference'] = referencia
+
+        # ID del inmueble
+        id_inmueble = inmueble.get('idinmueble', '')
+        if id_inmueble:
+            listing['property_id'] = id_inmueble
+
+        return listing
+
+    def _parse_traditional_html(self, soup: BeautifulSoup) -> List[Dict[str, Any]]:
+        """
+        Método fallback para parsear HTML tradicional.
+        Usado si no se encuentran componentes Livewire.
+        """
+        listings = []
+
         # Intentar varios selectores comunes
         selectors = [
             'article.anuncio',
             'div.property-card',
             'div.listing-item',
             'li.property-item',
-            'div[data-id]',
+            'div.inmueble_listado',
             '.resultados article',
-            '.listado-inmuebles article',
         ]
 
         items = []
@@ -144,24 +290,18 @@ class TucasaScraper(BaseScraper):
 
         if not items:
             # Intentar buscar enlaces de anuncios directamente
-            links = soup.select('a[href*="/inmueble/"], a[href*="/anuncio/"]')
+            links = soup.select('a[href*="/inmueble/"], a[href*="/anuncio/"], a[href*="/pisos-y-apartamentos/"]')
             self.logger.debug(f"Búsqueda de enlaces: encontrados {len(links)} enlaces")
 
             if not links:
-                # Log para debugging - ver qué hay en la página
                 self.logger.warning(f"⚠️ No se encontraron anuncios ni enlaces en la página")
-                # Log some sample HTML structure
-                body = soup.find('body')
-                if body:
-                    # Get first few elements to understand structure
-                    children = list(body.children)[:5]
-                    self.logger.debug(f"Body structure sample: {[str(c)[:100] for c in children if str(c).strip()]}")
+                return listings
 
             for link in links:
                 parent = link.find_parent(['article', 'div', 'li'])
                 if parent and parent not in items:
                     items.append(parent)
-        
+
         for item in items:
             try:
                 listing = self._parse_listing_item(item)
@@ -170,9 +310,9 @@ class TucasaScraper(BaseScraper):
             except Exception as e:
                 self.logger.debug(f"Error parseando item: {e}")
                 continue
-        
+
         return listings
-    
+
     def _parse_listing_item(self, item) -> Dict[str, Any]:
         """Parsea un item individual del listado."""
         listing = {}
