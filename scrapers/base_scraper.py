@@ -299,10 +299,10 @@ class BaseScraper(ABC, LoggerMixin):
     def _fetch_page(self, url: str) -> Optional[str]:
         """
         Obtiene el contenido HTML de una página.
-        
+
         Args:
             url: URL a obtener
-        
+
         Returns:
             Contenido HTML o None si falla
         """
@@ -310,21 +310,38 @@ class BaseScraper(ABC, LoggerMixin):
         if not self._can_fetch(url):
             self.logger.warning(f"URL bloqueada por robots.txt: {url}")
             return None
-        
+
         # Aplicar delay entre peticiones
         self._apply_delay()
-        
+
         try:
+            self.logger.debug(f"Fetching URL: {url}")
             response = self.session.get(
                 url,
                 timeout=self.timeout,
                 headers=self._get_headers()
             )
+
+            self.logger.debug(f"Response status: {response.status_code}")
+            self.logger.debug(f"Response length: {len(response.text)} bytes")
+
             response.raise_for_status()
-            
+
             self._last_request_time = time.time()
+
+            # Log first 500 chars of response for debugging
+            if self.logger.level <= 10:  # DEBUG level
+                preview = response.text[:500].replace('\n', ' ')
+                self.logger.debug(f"Response preview: {preview}...")
+
             return response.text
-            
+
+        except requests.exceptions.HTTPError as e:
+            self.logger.error(f"HTTP error {response.status_code} obteniendo {url}: {e}")
+            return None
+        except requests.exceptions.Timeout as e:
+            self.logger.error(f"Timeout obteniendo {url}: {e}")
+            return None
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error obteniendo {url}: {e}")
             return None

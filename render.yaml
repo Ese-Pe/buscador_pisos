@@ -10,9 +10,11 @@ services:
     env: python
     region: frankfurt  # Más cercano a España
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: python main.py --keep-alive
-    healthCheckPath: /
+    buildCommand: |
+      pip install -r requirements.txt && \
+      apt-get update && apt-get install -y chromium chromium-driver || true
+    startCommand: python server.py
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -26,6 +28,10 @@ services:
         sync: false
       - key: TELEGRAM_CHAT_IDS
         sync: false
+      - key: RENDER_SERVICE_URL
+        sync: false
+      - key: CHROMIUM_PATH
+        value: /usr/bin/chromium
 
 # Cron Jobs (requiere plan de pago o configuración manual)
 # Los planes gratuitos de Render no soportan cron jobs nativos

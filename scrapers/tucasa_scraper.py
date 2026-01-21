@@ -115,7 +115,12 @@ class TucasaScraper(BaseScraper):
         """Parsea la página de listado de Tucasa."""
         soup = BeautifulSoup(html, 'html.parser')
         listings = []
-        
+
+        # Log HTML title for debugging
+        title = soup.find('title')
+        if title:
+            self.logger.debug(f"Page title: {title.get_text(strip=True)}")
+
         # Tucasa usa diferentes selectores según la versión de la página
         # Intentar varios selectores comunes
         selectors = [
@@ -127,18 +132,31 @@ class TucasaScraper(BaseScraper):
             '.resultados article',
             '.listado-inmuebles article',
         ]
-        
+
         items = []
         for selector in selectors:
             items = soup.select(selector)
             if items:
-                self.logger.debug(f"Encontrados {len(items)} items con selector: {selector}")
+                self.logger.debug(f"✓ Encontrados {len(items)} items con selector: {selector}")
                 break
-        
+            else:
+                self.logger.debug(f"✗ No items con selector: {selector}")
+
         if not items:
             # Intentar buscar enlaces de anuncios directamente
             links = soup.select('a[href*="/inmueble/"], a[href*="/anuncio/"]')
-            self.logger.debug(f"Encontrados {len(links)} enlaces de anuncios")
+            self.logger.debug(f"Búsqueda de enlaces: encontrados {len(links)} enlaces")
+
+            if not links:
+                # Log para debugging - ver qué hay en la página
+                self.logger.warning(f"⚠️ No se encontraron anuncios ni enlaces en la página")
+                # Log some sample HTML structure
+                body = soup.find('body')
+                if body:
+                    # Get first few elements to understand structure
+                    children = list(body.children)[:5]
+                    self.logger.debug(f"Body structure sample: {[str(c)[:100] for c in children if str(c).strip()]}")
+
             for link in links:
                 parent = link.find_parent(['article', 'div', 'li'])
                 if parent and parent not in items:
