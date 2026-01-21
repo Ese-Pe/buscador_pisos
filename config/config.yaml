@@ -51,7 +51,7 @@ database:
 # -----------------------------------------------------------------------------
 logging:
   # Nivel de logging: DEBUG, INFO, WARNING, ERROR, CRITICAL
-  level: "INFO"
+  level: "DEBUG"
   
   # Directorio para archivos de log
   log_dir: "logs"
@@ -119,7 +119,7 @@ portals:
     enabled: false
     priority: 1
   yaencontre:
-    enabled: true
+    enabled: false  # Disabled temporarily - Selenium issues on Render
     priority: 1
   
   # Portales bancarios

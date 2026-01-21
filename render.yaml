@@ -10,9 +10,7 @@ services:
     env: python
     region: frankfurt  # Más cercano a España
     plan: free
-    buildCommand: |
-      pip install -r requirements.txt && \
-      apt-get update && apt-get install -y chromium chromium-driver || true
+    buildCommand: pip install -r requirements.txt
     startCommand: python server.py
     healthCheckPath: /health
     envVars:

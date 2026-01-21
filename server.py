@@ -220,10 +220,13 @@ def run_server(port=8080, enable_scheduler=True, interval_hours=6):
         scheduled_runner.start()
 
     server = HTTPServer(("0.0.0.0", port), BotHandler)
-    print(f"🌐 Servidor iniciado en puerto {port}")
+    print(f"🌐 Servidor HTTP iniciado correctamente")
+    print(f"   Puerto: {port}")
+    print(f"   Host: 0.0.0.0 (escuchando en todas las interfaces)")
     print(f"   Health check: http://localhost:{port}/health")
     print(f"   Status: http://localhost:{port}/status")
     print(f"   Trigger run: http://localhost:{port}/run")
+    print(f"   Scheduler: {'habilitado' if enable_scheduler else 'deshabilitado'} ({interval_hours}h)")
 
     try:
         server.serve_forever()
@@ -238,5 +241,11 @@ if __name__ == "__main__":
     # Ejecutar cada 6 horas por defecto (configurable vía env var)
     interval = int(os.environ.get("SCRAPE_INTERVAL_HOURS", 6))
     enable_scheduler = os.environ.get("ENABLE_SCHEDULER", "true").lower() == "true"
+
+    print(f"🚀 Iniciando servidor en puerto {port}")
+    print(f"📊 Variables de entorno:")
+    print(f"   PORT={port}")
+    print(f"   SCRAPE_INTERVAL_HOURS={interval}")
+    print(f"   ENABLE_SCHEDULER={enable_scheduler}")
 
     run_server(port=port, enable_scheduler=enable_scheduler, interval_hours=interval)
