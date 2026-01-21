@@ -91,7 +91,7 @@ email:
 # NOTIFICACIONES - TELEGRAM
 # -----------------------------------------------------------------------------
 telegram:
-  enabled: false
+  enabled: true
   
   # Token del bot (usar variable de entorno TELEGRAM_BOT_TOKEN)
   bot_token: "${TELEGRAM_BOT_TOKEN}"
