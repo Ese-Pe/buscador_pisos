@@ -100,6 +100,7 @@ class GenericScraper(BaseScraper):
             if params:
                 url += '?' + urlencode(params)
 
+        self.logger.info(f"🔗 {self.name} search URL: {url}")
         return url
 
     def _normalize_for_url(self, text: str) -> str:
@@ -127,11 +128,13 @@ class GenericScraper(BaseScraper):
     def parse_listing_list(self, html: str) -> List[Dict[str, Any]]:
         soup = BeautifulSoup(html, 'html.parser')
         listings = []
-        
+
         # Selector de items
         item_selector = self.selectors.get('item', 'article, .property-card, .listing-item')
         items = soup.select(item_selector)
-        
+
+        self.logger.debug(f"🔍 {self.name}: Selector '{item_selector}' found {len(items)} items in HTML ({len(html)} bytes)")
+
         for item in items:
             try:
                 listing = self._extract_item_data(item)
@@ -139,7 +142,7 @@ class GenericScraper(BaseScraper):
                     listings.append(listing)
             except Exception as e:
                 self.logger.debug(f"Error parseando item: {e}")
-        
+
         return listings
     
     def _extract_item_data(self, item: BeautifulSoup) -> Dict[str, Any]:
