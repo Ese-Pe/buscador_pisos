@@ -32,37 +32,97 @@ class GenericScraper(BaseScraper):
         self.selectors = self.portal_config.get('selectors', {})
     
     def build_search_url(self, filters: Dict[str, Any]) -> str:
-        """Construye URL según la configuración del portal."""
-        param_mapping = self.portal_config.get('param_mapping', {})
-        params = {}
-        
-        # Mapear filtros a parámetros
+        """
+        Construye URL según la configuración del portal.
+
+        Updated to handle new URL formats:
+        - Altamira: /venta-pisos/{province-lowercase}
+        - Solvia/Haya: /es/comprar/viviendas/{province-lowercase}/{city-lowercase}
+        - Aliseda: /comprar-viviendas/aragon/{province-lowercase}
+        """
         location = filters.get('location', {})
-        if location.get('province') and param_mapping.get('province'):
-            params[param_mapping['province']] = location['province']
-        if location.get('city') and param_mapping.get('city'):
-            params[param_mapping['city']] = location['city']
-        
-        if filters.get('price', {}).get('min') and param_mapping.get('price_min'):
-            params[param_mapping['price_min']] = filters['price']['min']
-        if filters.get('price', {}).get('max') and param_mapping.get('price_max'):
-            params[param_mapping['price_max']] = filters['price']['max']
-        
-        if filters.get('surface', {}).get('min') and param_mapping.get('surface_min'):
-            params[param_mapping['surface_min']] = filters['surface']['min']
-        
-        if filters.get('bedrooms', {}).get('min') and param_mapping.get('bedrooms_min'):
-            params[param_mapping['bedrooms_min']] = filters['bedrooms']['min']
-        
-        # Tipo de operación
-        if filters.get('operation_type') and param_mapping.get('operation_type'):
-            op_map = param_mapping.get('operation_values', {'compra': 'venta', 'alquiler': 'alquiler'})
-            params[param_mapping['operation_type']] = op_map.get(filters['operation_type'], 'venta')
-        
-        url = self.base_url + self.search_path
-        if params:
-            url += '?' + urlencode(params)
+        province = location.get('province', '').lower()
+        city = location.get('city', '').lower()
+
+        # Normalize Spanish characters for URLs
+        province = self._normalize_for_url(province)
+        city = self._normalize_for_url(city)
+
+        # Build URL based on portal
+        if self.name == 'altamira':
+            # Altamira: /venta-pisos/zaragoza
+            url = f"{self.base_url}{self.search_path}/{province}" if province else f"{self.base_url}{self.search_path}"
+
+        elif self.name in ['solvia', 'haya']:
+            # Solvia/Haya: /es/comprar/viviendas/zaragoza/zaragoza
+            if province and city:
+                url = f"{self.base_url}{self.search_path}/{province}/{city}"
+            elif province:
+                url = f"{self.base_url}{self.search_path}/{province}"
+            else:
+                url = f"{self.base_url}{self.search_path}"
+
+        elif self.name == 'aliseda':
+            # Aliseda: /comprar-viviendas/aragon/zaragoza
+            # Map province to region (Zaragoza -> Aragon)
+            region_map = {
+                'zaragoza': 'aragon',
+                'huesca': 'aragon',
+                'teruel': 'aragon',
+                'madrid': 'madrid',
+                'barcelona': 'cataluna',
+                # Add more as needed
+            }
+            region = region_map.get(province, 'aragon')
+            if province:
+                url = f"{self.base_url}{self.search_path}/{region}/{province}"
+            else:
+                url = f"{self.base_url}{self.search_path}"
+
+        elif self.name == 'servihabitat':
+            # Servihabitat: /es/comprar/viviendas (generic, often redirects)
+            url = f"{self.base_url}{self.search_path}"
+
+        else:
+            # Fallback to old query parameter method
+            param_mapping = self.portal_config.get('param_mapping', {})
+            params = {}
+
+            if location.get('province') and param_mapping.get('province'):
+                params[param_mapping['province']] = location['province']
+            if location.get('city') and param_mapping.get('city'):
+                params[param_mapping['city']] = location['city']
+
+            if filters.get('price', {}).get('max') and param_mapping.get('price_max'):
+                params[param_mapping['price_max']] = filters['price']['max']
+
+            url = self.base_url + self.search_path
+            if params:
+                url += '?' + urlencode(params)
+
         return url
+
+    def _normalize_for_url(self, text: str) -> str:
+        """Normalize text for URL (lowercase, remove accents, replace spaces)."""
+        if not text:
+            return ''
+
+        # Lowercase
+        text = text.lower().strip()
+
+        # Replace accents
+        replacements = {
+            'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+            'ñ': 'n', 'ü': 'u', 'à': 'a', 'è': 'e', 'ì': 'i',
+            'ò': 'o', 'ù': 'u', 'ç': 'c'
+        }
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+
+        # Replace spaces with hyphens
+        text = text.replace(' ', '-')
+
+        return text
     
     def parse_listing_list(self, html: str) -> List[Dict[str, Any]]:
         soup = BeautifulSoup(html, 'html.parser')
@@ -232,93 +292,90 @@ PORTAL_CONFIGS = {
     'altamira': {
         'name': 'altamira',
         'base_url': 'https://www.altamirainmuebles.com',
-        'search_path': '/inmuebles/viviendas',
+        'search_path': '/venta-pisos',  # Updated URL format
         'param_mapping': {
-            'province': 'provincia',
-            'city': 'localidad',
-            'price_min': 'precioDesde',
-            'price_max': 'precioHasta',
-            'surface_min': 'superficieDesde',
-            'bedrooms_min': 'habitaciones',
+            # Altamira uses city-based URLs like /venta-pisos/zaragoza
+            # Parameters are not used in URL path
         },
         'selectors': {
-            'item': '.property-card, .inmueble-card, article',
-            'link': 'a[href*="/inmueble/"]',
-            'title': '.title, h3',
-            'price': '.price, .precio',
-            'location': '.location, .ubicacion',
-            'surface': '.surface, .superficie',
-            'bedrooms': '.rooms, .habitaciones',
-            'next_page': '.pagination .next a, a[rel="next"]',
+            'item': '.property-card, .inmueble-card, article, .result-item',
+            'link': 'a[href*="/inmueble/"], a[href*="/vivienda/"]',
+            'title': '.title, h3, h2',
+            'price': '.price, .precio, [class*="precio"]',
+            'location': '.location, .ubicacion, [class*="ubicacion"]',
+            'surface': '.surface, .superficie, [class*="superficie"]',
+            'bedrooms': '.rooms, .habitaciones, [class*="hab"]',
+            'next_page': '.pagination .next a, a[rel="next"], .next-page',
         }
     },
     'solvia': {
         'name': 'solvia',
         'base_url': 'https://www.solvia.es',
-        'search_path': '/inmuebles',
+        'search_path': '/es/comprar/viviendas',  # Updated URL format
         'param_mapping': {
-            'province': 'provincia',
-            'city': 'municipio',
-            'price_min': 'precioMin',
-            'price_max': 'precioMax',
-            'surface_min': 'superficieMin',
-            'bedrooms_min': 'habitaciones',
-            'operation_type': 'tipoOperacion',
-            'operation_values': {'compra': 'venta', 'alquiler': 'alquiler'},
+            # Solvia uses /es/comprar/viviendas/province/city format
         },
         'selectors': {
-            'item': '.property-card, .item-inmueble',
-            'link': 'a[href*="/inmueble"]',
-            'title': '.title, h2, h3',
-            'price': '.price, .precio',
-            'location': '.location, .ubicacion',
-            'next_page': '.pagination .next, a.next',
+            'item': '.property-card, .item-inmueble, article, [class*="property"]',
+            'link': 'a[href*="/vivienda/"], a[href*="/inmueble"]',
+            'title': '.title, h2, h3, [class*="title"]',
+            'price': '.price, .precio, [class*="precio"]',
+            'location': '.location, .ubicacion, [class*="ubicacion"]',
+            'surface': '[class*="superficie"], [class*="m2"]',
+            'bedrooms': '[class*="hab"], [class*="dorm"]',
+            'next_page': '.pagination .next, a.next, [class*="next"]',
         }
     },
     'haya': {
         'name': 'haya',
         'base_url': 'https://www.haya.es',
-        'search_path': '/comprar/viviendas',
+        'search_path': '/comprar/viviendas',  # Updated - similar to Solvia
         'param_mapping': {
-            'province': 'provincia',
-            'price_max': 'precio_hasta',
-            'surface_min': 'metros_desde',
+            # Haya uses /comprar/viviendas/province format
         },
         'selectors': {
-            'item': '.property-item, .inmueble',
-            'link': 'a[href*="/inmueble/"]',
-            'title': '.title, h3',
-            'price': '.price, .precio',
-            'location': '.location',
+            'item': '.property-item, .inmueble, article, [class*="property"]',
+            'link': 'a[href*="/inmueble/"], a[href*="/vivienda/"]',
+            'title': '.title, h3, h2',
+            'price': '.price, .precio, [class*="precio"]',
+            'location': '.location, [class*="ubicacion"]',
+            'surface': '[class*="m2"], [class*="superficie"]',
+            'bedrooms': '[class*="hab"], [class*="dorm"]',
+            'next_page': 'a.next, [class*="next"], .pagination a',
         }
     },
     'servihabitat': {
         'name': 'servihabitat',
         'base_url': 'https://www.servihabitat.com',
-        'search_path': '/viviendas',
+        'search_path': '/es/comprar/viviendas',  # Updated URL format
         'param_mapping': {
-            'province': 'provincia',
-            'city': 'localidad',
-            'price_max': 'precioHasta',
+            # Note: Servihabitat properties are often listed on idealista/fotocasa
+            # Direct scraping may not work - listings redirected to third-party sites
         },
         'selectors': {
-            'item': '.property-card, .vivienda-item',
-            'link': 'a[href*="/vivienda/"]',
-            'price': '.price, .precio',
+            'item': '.property-card, .vivienda-item, article',
+            'link': 'a[href*="/vivienda/"], a[href*="/inmueble"]',
+            'title': 'h2, h3, [class*="title"]',
+            'price': '.price, .precio, [class*="precio"]',
+            'location': '[class*="ubicacion"], [class*="location"]',
+            'next_page': 'a.next, [class*="next"]',
         }
     },
     'aliseda': {
         'name': 'aliseda',
         'base_url': 'https://www.alisedainmobiliaria.com',
-        'search_path': '/venta/viviendas',
+        'search_path': '/comprar-viviendas',  # Updated URL format
         'param_mapping': {
-            'province': 'provincia',
-            'price_max': 'precio_max',
+            # Aliseda uses /comprar-viviendas/region/province format
         },
         'selectors': {
-            'item': '.property-item, article',
-            'link': 'a[href*="/inmueble/"]',
-            'price': '.price',
+            'item': '.property-item, article, [class*="property"], [class*="inmueble"]',
+            'link': 'a[href*="/inmueble/"], a[href*="/vivienda/"]',
+            'title': 'h2, h3, [class*="title"]',
+            'price': '.price, [class*="precio"]',
+            'location': '[class*="ubicacion"], [class*="location"]',
+            'surface': '[class*="m2"], [class*="superficie"]',
+            'next_page': 'a[rel="next"], [class*="next"]',
         }
     },
     'anticipa': {

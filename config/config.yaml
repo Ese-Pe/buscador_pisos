@@ -123,24 +123,24 @@ portals:
     priority: 1
   
   # Portales bancarios
-  # Temporarily disabled - URLs returning 404 errors, need investigation
+  # URLs updated with correct 2026 formats
   altamira:
-    enabled: false  # TODO: Fix URL format
+    enabled: true  # Fixed: /venta-pisos/{province}
     priority: 2
   haya:
-    enabled: false  # TODO: Fix URL format
+    enabled: true  # Fixed: /comprar/viviendas/{province}/{city}
     priority: 2
   solvia:
-    enabled: false  # TODO: Fix URL format
+    enabled: true  # Fixed: /es/comprar/viviendas/{province}/{city}
     priority: 2
   anticipa:
-    enabled: false
+    enabled: false  # Not researched yet
     priority: 2
   servihabitat:
-    enabled: false  # TODO: Fix URL format
+    enabled: false  # Note: Often redirects to third-party sites
     priority: 2
   aliseda:
-    enabled: false  # TODO: Fix URL format
+    enabled: true  # Fixed: /comprar-viviendas/{region}/{province}
     priority: 2
   bbva_valora:
     enabled: false
