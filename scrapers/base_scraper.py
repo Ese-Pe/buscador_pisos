@@ -223,13 +223,19 @@ class BaseScraper(ABC, LoggerMixin):
         
         while search_url and page <= max_pages:
             self.logger.info(f"Procesando página {page}")
-            
+
             # Obtener página de listado
-            html = self._fetch_page(search_url)
-            if not html:
-                self.logger.warning(f"No se pudo obtener la página {page}")
-                break
-            
+            try:
+                html = self._fetch_page(search_url)
+                if not html:
+                    self.logger.warning(f"No se pudo obtener la página {page}")
+                    break
+            except Exception as e:
+                # If _fetch_page raises an exception (403, timeout, etc.),
+                # re-raise it so it gets caught at the top level and counted as an error
+                self.logger.error(f"Error fatal obteniendo página {page}: {e}")
+                raise
+
             # Parsear listado
             listings_data = self.parse_listing_list(html)
             
@@ -337,14 +343,23 @@ class BaseScraper(ABC, LoggerMixin):
             return response.text
 
         except requests.exceptions.HTTPError as e:
-            self.logger.error(f"HTTP error {response.status_code} obteniendo {url}: {e}")
-            return None
+            # Log specific HTTP errors with more detail
+            status_code = response.status_code
+            if status_code == 403:
+                self.logger.error(f"❌ Portal bloqueado (403 Forbidden): {url}")
+                self.logger.error(f"   El portal detectó el scraper y bloqueó el acceso. Puede necesitar Selenium o cookies.")
+            elif status_code == 404:
+                self.logger.warning(f"⚠️  Página no encontrada (404): {url}")
+            else:
+                self.logger.error(f"HTTP error {status_code} obteniendo {url}: {e}")
+            # Raise exception so it gets counted in error statistics
+            raise
         except requests.exceptions.Timeout as e:
             self.logger.error(f"Timeout obteniendo {url}: {e}")
-            return None
+            raise
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error obteniendo {url}: {e}")
-            return None
+            raise
     
     def _get_headers(self) -> Dict[str, str]:
         """
