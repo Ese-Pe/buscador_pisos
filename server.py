@@ -116,7 +116,8 @@ class BotHandler(BaseHTTPRequestHandler):
                 "total_found": stats.total_listings_found,
                 "new_listings": stats.new_listings,
                 "errors": stats.errors,
-                "duration": str(stats.end_time - stats.start_time) if stats.end_time else None
+                "duration": str(stats.end_time - stats.start_time) if stats.end_time else None,
+                "portal_stats": stats.portal_stats  # Add per-portal statistics
             }
             bot_status["status"] = "completed"
             
@@ -195,7 +196,8 @@ class ScheduledRunner:
                 "total_found": stats.total_listings_found,
                 "new_listings": stats.new_listings,
                 "errors": stats.errors,
-                "duration": str(stats.end_time - stats.start_time) if stats.end_time else None
+                "duration": str(stats.end_time - stats.start_time) if stats.end_time else None,
+                "portal_stats": stats.portal_stats  # Add per-portal statistics
             }
             bot_status["status"] = "completed"
             print(f"✅ Bot completado - {stats.new_listings} nuevos anuncios")
