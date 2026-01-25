@@ -110,7 +110,8 @@ class BotHandler(BaseHTTPRequestHandler):
         try:
             from main import RealEstateBot
             bot = RealEstateBot()
-            stats = bot.run(test_mode=test_mode)
+            # Increased max_pages from 10 to 25 for better Tucasa coverage
+            stats = bot.run(test_mode=test_mode, max_pages=25)
             
             bot_status["last_run_stats"] = {
                 "total_found": stats.total_listings_found,
@@ -190,7 +191,8 @@ class ScheduledRunner:
             print(f"🤖 Ejecutando bot programado - {datetime.now().isoformat()}")
             from main import RealEstateBot
             bot = RealEstateBot()
-            stats = bot.run(test_mode=False)
+            # Increased max_pages from 10 to 25 for better Tucasa coverage
+            stats = bot.run(test_mode=False, max_pages=25)
 
             bot_status["last_run_stats"] = {
                 "total_found": stats.total_listings_found,

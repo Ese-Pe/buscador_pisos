@@ -116,13 +116,13 @@ portals:
     enabled: true
     priority: 1
   idealista:
-    enabled: true  # 50M+ visitas/mes, 1.2M+ listados
+    enabled: false  # Blocked by anti-bot protection - would need Selenium
     priority: 1
   fotocasa:
-    enabled: true  # 13M+ visitas/mes
+    enabled: false  # Blocked by anti-bot protection - would need Selenium
     priority: 1
   pisos:
-    enabled: true  # Portal establecido desde 1996
+    enabled: false  # Blocked by anti-bot protection - would need Selenium
     priority: 1
   bienici:
     enabled: false
