@@ -111,36 +111,46 @@ telegram:
 # -----------------------------------------------------------------------------
 # Habilita/deshabilita portales individuales
 portals:
-  # Agregadores principales
+  # Agregadores principales - Portales con más tráfico y listados en España
   tucasa:
     enabled: true
     priority: 1
+  idealista:
+    enabled: true  # 50M+ visitas/mes, 1.2M+ listados
+    priority: 1
+  fotocasa:
+    enabled: true  # 13M+ visitas/mes
+    priority: 1
+  pisos:
+    enabled: true  # Portal establecido desde 1996
+    priority: 1
   bienici:
     enabled: false
-    priority: 1
+    priority: 2
   yaencontre:
     enabled: false  # Disabled temporarily - Selenium issues on Render
-    priority: 1
+    priority: 2
   
   # Portales bancarios
-  # URLs updated with correct 2026 formats
+  # Disabled due to anti-bot protection (403 Forbidden)
+  # Properties from these banks are typically listed on aggregators like Idealista/Fotocasa
   altamira:
-    enabled: true  # Fixed: /venta-pisos/{province}
+    enabled: false  # Blocked by anti-bot protection
     priority: 2
   haya:
-    enabled: true  # Fixed: /comprar/viviendas/{province}/{city}
+    enabled: false  # Blocked by anti-bot protection
     priority: 2
   solvia:
-    enabled: true  # Fixed: /es/comprar/viviendas/{province}/{city}
+    enabled: false  # Blocked by anti-bot protection
     priority: 2
   anticipa:
     enabled: false  # Not researched yet
     priority: 2
   servihabitat:
-    enabled: false  # Note: Often redirects to third-party sites
+    enabled: false  # Often redirects to third-party sites
     priority: 2
   aliseda:
-    enabled: true  # Fixed: /comprar-viviendas/{region}/{province}
+    enabled: false  # Blocked by anti-bot protection
     priority: 2
   bbva_valora:
     enabled: false

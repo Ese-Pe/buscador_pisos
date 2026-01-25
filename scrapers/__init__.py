@@ -6,11 +6,18 @@ from .base_scraper import BaseScraper, SeleniumBaseScraper
 from .tucasa_scraper import TucasaScraper
 from .yaencontre_scraper import YaencontreScraper
 from .bienici_scraper import BieniciScraper
+from .idealista_scraper import IdealistaScraper
+from .fotocasa_scraper import FotocasaScraper
+from .pisos_scraper import PisosScraper
 from .generic_scraper import GenericScraper, create_portal_scraper, PORTAL_CONFIGS
 
 # Mapeo de nombres a clases de scrapers
 SCRAPER_CLASSES = {
+    # Agregadores principales
     'tucasa': TucasaScraper,
+    'idealista': IdealistaScraper,
+    'fotocasa': FotocasaScraper,
+    'pisos': PisosScraper,
     'yaencontre': YaencontreScraper,
     'bienici': BieniciScraper,
     # Los portales bancarios usan GenericScraper con configuración
@@ -72,6 +79,9 @@ __all__ = [
     'BaseScraper',
     'SeleniumBaseScraper',
     'TucasaScraper',
+    'IdealistaScraper',
+    'FotocasaScraper',
+    'PisosScraper',
     'YaencontreScraper',
     'BieniciScraper',
     'GenericScraper',
