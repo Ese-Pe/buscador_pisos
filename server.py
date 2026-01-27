@@ -7,11 +7,17 @@ Con modo de ejecución periódica automática.
 
 import json
 import os
+import sys
 import threading
 import time
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+
+# Add root directory to path
+ROOT_DIR = Path(__file__).parent
+sys.path.insert(0, str(ROOT_DIR))
 
 # Variable global para el estado del bot
 bot_status = {
@@ -214,9 +220,81 @@ class ScheduledRunner:
 scheduled_runner = None
 
 
-def run_server(port=8080, enable_scheduler=True, interval_hours=6):
+class KeepAlive:
+    """
+    Keep-alive service to prevent Render.com from spinning down the service.
+    Pings the service URL periodically to keep it active.
+    """
+
+    def __init__(self, service_url: str, interval_minutes: int = 10):
+        self.service_url = service_url
+        self.interval_seconds = interval_minutes * 60
+        self._running = False
+        self._thread = None
+
+    def start(self):
+        """Start the keep-alive pinger."""
+        if not self.service_url or self._running:
+            return
+
+        self._running = True
+        self._thread = threading.Thread(target=self._ping_loop, daemon=True)
+        self._thread.start()
+        print(f"💗 Keep-alive iniciado (ping cada {self.interval_seconds // 60} minutos)")
+        print(f"   URL: {self.service_url}")
+
+    def stop(self):
+        """Stop the keep-alive pinger."""
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=5)
+
+    def _ping_loop(self):
+        """Main ping loop."""
+        import requests
+
+        while self._running:
+            time.sleep(self.interval_seconds)
+
+            if not self._running:
+                break
+
+            try:
+                # Ping the health endpoint
+                response = requests.get(f"{self.service_url}/health", timeout=10)
+                if response.status_code == 200:
+                    print(f"💗 Keep-alive ping exitoso - {datetime.now().strftime('%H:%M:%S')}")
+                else:
+                    print(f"⚠️  Keep-alive ping falló (status {response.status_code})")
+            except Exception as e:
+                print(f"⚠️  Keep-alive ping error: {e}")
+
+
+# Instancia global del keep-alive
+keep_alive = None
+
+
+def run_server(port=8080, enable_scheduler=True, interval_hours=6, enable_keep_alive=True):
     """Inicia el servidor HTTP."""
-    global scheduled_runner
+    global scheduled_runner, keep_alive
+
+    # Load config to get keep-alive settings
+    from utils import load_config
+    config = load_config('config/config.yaml')
+    keep_alive_config = config.get('keep_alive', {})
+
+    # Iniciar keep-alive si está habilitado
+    if enable_keep_alive and keep_alive_config.get('enabled', False):
+        service_url = os.environ.get('RENDER_SERVICE_URL') or keep_alive_config.get('service_url', '')
+        if service_url:
+            # Remove ${} variable syntax if present
+            if '${' in service_url:
+                service_url = os.environ.get('RENDER_SERVICE_URL', '')
+
+            if service_url:
+                ping_interval = keep_alive_config.get('ping_interval_minutes', 10)
+                keep_alive = KeepAlive(service_url=service_url, interval_minutes=ping_interval)
+                keep_alive.start()
 
     # Iniciar ejecutor periódico
     if enable_scheduler:
@@ -231,6 +309,7 @@ def run_server(port=8080, enable_scheduler=True, interval_hours=6):
     print(f"   Status: http://localhost:{port}/status")
     print(f"   Trigger run: http://localhost:{port}/run")
     print(f"   Scheduler: {'habilitado' if enable_scheduler else 'deshabilitado'} ({interval_hours}h)")
+    print(f"   Keep-alive: {'habilitado' if keep_alive else 'deshabilitado'}")
 
     try:
         server.serve_forever()
@@ -238,6 +317,8 @@ def run_server(port=8080, enable_scheduler=True, interval_hours=6):
         print("\n🛑 Deteniendo servidor...")
         if scheduled_runner:
             scheduled_runner.stop()
+        if keep_alive:
+            keep_alive.stop()
 
 
 if __name__ == "__main__":
