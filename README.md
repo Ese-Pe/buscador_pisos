@@ -1,279 +1,356 @@
 # 🏠 Real Estate Bot
 
-Bot automatizado para monitorizar ofertas de pisos en portales inmobiliarios españoles. Detecta anuncios nuevos y envía notificaciones por email y Telegram.
+Bot automatizado para monitorizar ofertas de pisos en portales inmobiliarios españoles. Detecta anuncios nuevos y envía notificaciones por Telegram.
 
 ## ✨ Características
 
 - **Multi-portal**: Soporta 15+ portales inmobiliarios (agregadores y bancarios)
+- **Tucasa activo**: Portal principal funcionando (otros requieren Selenium)
 - **Filtros avanzados**: Ubicación, precio, superficie, habitaciones, características
-- **Notificaciones**: Email (SMTP) y Telegram
+- **Notificaciones Telegram**: Alertas instantáneas de nuevas propiedades
 - **Base de datos local**: SQLite para tracking de anuncios
-- **Anti-detección**: User-agents rotativos, delays aleatorios, respeto de robots.txt
-- **Keep-alive**: Soporte para Render.com (plan gratuito)
-- **Fácilmente extensible**: Arquitectura modular para añadir nuevos portales
+- **Ejecución programada**: Runs automáticos cada 6 horas
+- **Keep-alive para Render**: Previene spin-down en plan gratuito
+- **Anti-detección**: User-agents rotativos, delays aleatorios
 
 ## 📋 Portales Soportados
 
-### Agregadores
-- ✅ Tucasa (tucasa.com)
-- ✅ Bienici (bienici.com)
-- ✅ Yaencontre (yaencontre.com)
+### Actualmente Funcionando
+- ✅ **Tucasa** (tucasa.com) - Portal principal, 40+ listados
+
+### Disponibles para Selenium (futuro)
+- 🔄 Idealista, Fotocasa, Pisos.com (requieren Selenium)
+- 🔄 Yaencontre, Bienici
 
 ### Portales Bancarios
-- ✅ Altamira
-- ✅ Haya Real Estate
-- ✅ Solvia
-- ✅ Anticipa
-- ✅ Servihabitat
-- ✅ Aliseda
-- ✅ BBVA Valora
-- ✅ Bankinter Habitat
-- ✅ Kutxabank
-- ✅ Ibercaja Orienta
-- ✅ Cajamar
-- ✅ Comprarcasa
+- 🔄 Altamira, Haya, Solvia, Aliseda (requieren Selenium)
+- 🔄 Anticipa, Servihabitat, BBVA Valora
+- 🔄 Bankinter, Kutxabank, Ibercaja, Cajamar
 
-## 🚀 Instalación
+> **Nota**: Los portales marcados con 🔄 están implementados pero deshabilitados por protección anti-bot. Se pueden activar implementando Selenium.
 
-### 1. Clonar el repositorio
+## 🚀 Despliegue en Render.com (Recomendado)
 
-```bash
-git clone https://github.com/tu-usuario/buscador_pisos.git
-cd buscador_pisos
+### 1. Preparar el Repositorio
+
+1. Fork o clona este repositorio
+2. Conecta tu GitHub a Render.com
+
+### 2. Crear Web Service
+
+1. Ve a [Render.com](https://render.com)
+2. Click "New" → "Web Service"
+3. Conecta tu repositorio
+4. Configuración:
+   - **Name**: `buscador-pisos`
+   - **Region**: Frankfurt (o tu región)
+   - **Branch**: `main`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python server.py`
+
+### 3. Variables de Entorno (CRÍTICO)
+
+En Render Dashboard → Environment, añade:
+
 ```
-
-### 2. Crear entorno virtual
-
-```bash
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# o
-venv\Scripts\activate  # Windows
-```
-
-### 3. Instalar dependencias
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Configurar credenciales
-
-```bash
-cp .env.example .env
-```
-
-Edita `.env` con tus credenciales:
-
-```env
-# Email
-SMTP_USERNAME=tu-email@gmail.com
-SMTP_PASSWORD=tu-contraseña-de-aplicacion
-
-# Telegram
 TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjkl...
 TELEGRAM_CHAT_IDS=123456789
+RENDER_SERVICE_URL=https://buscador-pisos.onrender.com
 ```
 
-### 5. Configurar búsquedas
+⚠️ **`RENDER_SERVICE_URL` es ESENCIAL** para el keep-alive. Sin ella, el servicio se apagará después de 15 minutos.
 
-Edita `config/filters.yaml` para definir tus perfiles de búsqueda:
+### 4. Verificar Despliegue
 
-```yaml
-profiles:
-  madrid_centro:
-    enabled: true
-    location:
-      province: "Madrid"
-      city: "Madrid"
-      zones: ["Centro", "Chamberí"]
-    price:
-      min: 150000
-      max: 350000
-    surface:
-      min: 60
-    bedrooms:
-      min: 2
-```
-
-## 📖 Uso
-
-### Ejecutar el bot
-
-```bash
-# Modo normal
-python main.py
-
-# Modo test (sin enviar notificaciones)
-python main.py --test
-
-# Solo un portal
-python main.py --portal tucasa
-
-# Solo un perfil
-python main.py --profile madrid_centro
-
-# Ver estadísticas
-python main.py --stats
-
-# Probar notificaciones
-python main.py --test-notify
-
-# Listar portales disponibles
-python main.py --list-portals
-```
-
-### Programar ejecución con cron
-
-```bash
-# Editar crontab
-crontab -e
-
-# Añadir líneas para ejecutar a las 09:00 y 21:30
-0 9 * * * cd /ruta/al/bot && /ruta/al/venv/bin/python main.py >> logs/cron.log 2>&1
-30 21 * * * cd /ruta/al/bot && /ruta/al/venv/bin/python main.py >> logs/cron.log 2>&1
-```
-
-## ☁️ Despliegue en Render.com
-
-### 1. Crear nuevo Web Service
-
-1. Ve a [Render.com](https://render.com) y crea una cuenta
-2. Conecta tu repositorio de GitHub
-3. Selecciona "Web Service"
-
-### 2. Configuración del servicio
-
-- **Environment**: Python 3
-- **Build Command**: `pip install -r requirements.txt`
-- **Start Command**: `python main.py --keep-alive`
-
-### 3. Variables de entorno
-
-Añade en el panel de Render:
-
-```
-SMTP_USERNAME=tu-email@gmail.com
-SMTP_PASSWORD=tu-contraseña
-TELEGRAM_BOT_TOKEN=tu-token
-TELEGRAM_CHAT_IDS=tu-chat-id
-RENDER_SERVICE_URL=https://tu-servicio.onrender.com
-```
-
-### 4. Cron Jobs
-
-En Render, crea dos Cron Jobs:
-- **09:00**: `python main.py`
-- **21:30**: `python main.py`
-
-## 📧 Configuración de Email (Gmail)
-
-Para usar Gmail necesitas una "Contraseña de aplicación":
-
-1. Ve a [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-2. Selecciona "Correo" y "Otro dispositivo"
-3. Copia la contraseña generada y úsala en `SMTP_PASSWORD`
+Después del despliegue, visita:
+- Health check: `https://buscador-pisos.onrender.com/health`
+- Status: `https://buscador-pisos.onrender.com/status`
+- Trigger manual: `https://buscador-pisos.onrender.com/run`
 
 ## 🤖 Configuración de Telegram
 
-### 1. Crear un bot
+### 1. Crear un Bot
 
-1. Habla con [@BotFather](https://t.me/BotFather) en Telegram
+1. Abre Telegram y busca [@BotFather](https://t.me/BotFather)
 2. Envía `/newbot`
-3. Sigue las instrucciones y guarda el token
+3. Sigue las instrucciones
+4. Guarda el **token** que te da
 
 ### 2. Obtener tu Chat ID
 
-1. Habla con [@userinfobot](https://t.me/userinfobot)
-2. Te responderá con tu ID
+**Opción A - Con bot:**
+1. Busca [@userinfobot](https://t.me/userinfobot) en Telegram
+2. Envíale cualquier mensaje
+3. Te responderá con tu Chat ID
 
-### 3. Configurar el bot
+**Opción B - Con API:**
+1. Envía un mensaje a tu bot
+2. Visita (reemplaza `<TOKEN>`):
+   ```
+   https://api.telegram.org/bot<TOKEN>/getUpdates
+   ```
+3. Busca `"chat":{"id":XXXXXXX}`
 
-```env
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrSTUvwxYZ
-TELEGRAM_CHAT_IDS=123456789  # Múltiples: 123,456,789
+### 3. Iniciar el Bot
+
+1. Busca tu bot en Telegram
+2. Envíale `/start`
+3. Ahora puede enviarte mensajes
+
+## 🔧 Configuración de Búsquedas
+
+Edita `config/filters.yaml` para tus preferencias:
+
+```yaml
+profiles:
+  perfil_zaragoza:
+    enabled: true
+    name: "Zaragoza Centro"
+
+    location:
+      province: "Zaragoza"
+      city: "Zaragoza"
+
+    price:
+      min: 0
+      max: 315000
+
+    surface:
+      min: 90
+
+    bedrooms:
+      min: 3
+
+    features:
+      elevator: true
+      parking: true
 ```
+
+## 📊 Monitorización
+
+### Endpoints Disponibles
+
+```bash
+# Verificar servicio activo
+curl https://buscador-pisos.onrender.com/health
+
+# Ver estado y próxima ejecución
+curl https://buscador-pisos.onrender.com/status
+
+# Trigger ejecución manual
+curl https://buscador-pisos.onrender.com/run
+```
+
+### Respuesta de Status
+
+```json
+{
+  "status": "completed",
+  "last_run": "2026-01-27T13:18:04",
+  "last_run_stats": {
+    "total_found": 40,
+    "new_listings": 9,
+    "errors": 0,
+    "duration": "0:00:31",
+    "portal_stats": {
+      "tucasa": {
+        "found": 20,
+        "new": 5,
+        "errors": 0
+      }
+    }
+  },
+  "next_scheduled_run": "2026-01-27T19:18:04"
+}
+```
+
+## 🔍 Verificar Keep-Alive
+
+El keep-alive previene que Render apague el servicio. Verifica que funcione:
+
+### En Render Logs (Dashboard → Logs):
+
+```
+🌐 Servidor HTTP iniciado correctamente
+   Keep-alive: habilitado
+💗 Keep-alive iniciado (ping cada 10 minutos)
+⏰ Ejecutor periódico iniciado (cada 6h)
+```
+
+Cada 10 minutos verás:
+```
+💗 Keep-alive ping exitoso - HH:MM:SS
+```
+
+Si NO ves estos mensajes:
+1. Verifica que `RENDER_SERVICE_URL` esté configurado
+2. Verifica que el valor sea correcto (tu URL de Render)
+3. Redeploy el servicio
+
+## 🐛 Solución de Problemas
+
+### Bot no ejecuta automáticamente cada 6 horas
+
+**Causa**: Keep-alive no está funcionando, el servicio se apaga.
+
+**Solución**:
+1. Añade `RENDER_SERVICE_URL` en Environment variables
+2. Valor: `https://buscador-pisos.onrender.com` (tu URL)
+3. Redeploy automáticamente
+4. Verifica logs para "Keep-alive iniciado"
+
+### No recibo notificaciones de Telegram
+
+**Causa 1: Chat ID incorrecto**
+- Verifica tu Chat ID con @userinfobot
+- Actualiza `TELEGRAM_CHAT_IDS` en Render
+
+**Causa 2: Bot no iniciado**
+- Envía `/start` a tu bot en Telegram
+
+**Causa 3: Token incorrecto**
+- Verifica `TELEGRAM_BOT_TOKEN` en Render
+- Obtén token actual de @BotFather
+
+### Servicio muestra "Sleeping" en Render
+
+El keep-alive no está funcionando:
+1. Asegúrate que `RENDER_SERVICE_URL` existe
+2. Espera 10 minutos para primer ping
+3. Verifica logs para pings exitosos
+4. Si falla, redeploy el servicio
+
+### Bot encuentra 0 propiedades
+
+**Filtros muy restrictivos**:
+- Reduce requisitos (ej: quita elevator/parking)
+- Aumenta rango de precio
+- Reduce superficie mínima
+
+**Portal caído**:
+- Verifica que Tucasa.com esté accesible
+- Revisa logs para errores específicos
+
+## 📱 Notificaciones Telegram
+
+Cada vez que se encuentren propiedades nuevas, recibirás:
+
+```
+🏠 9 Nuevos Pisos Encontrados
+
+📍 Oliver-Valdefierro
+💰 220.000€
+📐 90 m² | 🛏️ 3 hab | 🚿 1 baño
+🔗 Ver detalles
+
+📍 Centro
+💰 315.000€
+📐 120 m² | 🛏️ 3 hab | 🚿 2 baños
+🔗 Ver detalles
+```
+
+## 🕐 Funcionamiento Automático
+
+Una vez desplegado correctamente:
+
+```
+00:00 → Bot se ejecuta (startup)
+00:10 → Keep-alive ping ✓
+00:20 → Keep-alive ping ✓
+...
+06:00 → Bot se ejecuta automáticamente ✓
+06:00 → 📱 Notificación Telegram (si hay nuevas)
+06:10 → Keep-alive ping ✓
+...
+12:00 → Bot se ejecuta automáticamente ✓
+18:00 → Bot se ejecuta automáticamente ✓
+00:00 → Bot se ejecuta automáticamente ✓
+```
+
+**Sin intervención manual necesaria** 🎉
 
 ## 📁 Estructura del Proyecto
 
 ```
-real-estate-bot/
+buscador_pisos/
 ├── config/
-│   ├── config.yaml       # Configuración general
-│   └── filters.yaml      # Filtros de búsqueda
+│   ├── config.yaml       # Configuración general y portales
+│   └── filters.yaml      # Filtros de búsqueda y perfiles
 ├── scrapers/
 │   ├── base_scraper.py   # Clase base abstracta
-│   ├── tucasa_scraper.py
-│   ├── yaencontre_scraper.py
-│   ├── bienici_scraper.py
+│   ├── tucasa_scraper.py # ✅ Funcionando
+│   ├── idealista_scraper.py # 🔄 Necesita Selenium
+│   ├── fotocasa_scraper.py  # 🔄 Necesita Selenium
+│   ├── pisos_scraper.py     # 🔄 Necesita Selenium
+│   ├── yaencontre_scraper.py # 🔄 Necesita Selenium
+│   ├── bienici_scraper.py    # 🔄 Necesita Selenium
 │   └── generic_scraper.py  # Para portales bancarios
 ├── database/
 │   ├── models.py         # Modelos de datos
 │   └── db_manager.py     # Gestor SQLite
 ├── notifiers/
-│   ├── email_notifier.py
 │   └── telegram_notifier.py
 ├── utils/
 │   ├── logger.py
 │   └── helpers.py
-├── main.py               # Punto de entrada
+├── main.py               # Bot runner
+├── server.py             # HTTP server + scheduler + keep-alive
 ├── requirements.txt
 └── README.md
 ```
 
-## 🔧 Añadir un Nuevo Portal
+## 🔧 Desarrollo Local
 
-1. Crea un nuevo archivo en `scrapers/`:
+### Instalación
 
-```python
-from .base_scraper import BaseScraper
-
-class MiPortalScraper(BaseScraper):
-    name = "mi_portal"
-    base_url = "https://www.miportal.com"
-    
-    def build_search_url(self, filters):
-        # Implementar
-        pass
-    
-    def parse_listing_list(self, html):
-        # Implementar
-        pass
-    
-    def parse_listing_detail(self, html, url):
-        # Implementar
-        pass
-    
-    def get_next_page_url(self, html, current_url):
-        # Implementar
-        pass
+```bash
+git clone <tu-repo>
+cd buscador_pisos
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+pip install -r requirements.txt
 ```
 
-2. Regístralo en `scrapers/__init__.py`
-3. Añádelo a `config/config.yaml`
+### Configuración Local
+
+Crea `.env`:
+```env
+TELEGRAM_BOT_TOKEN=your-token
+TELEGRAM_CHAT_IDS=your-chat-id
+```
+
+### Ejecutar
+
+```bash
+# Servidor con scheduler (recomendado)
+python server.py
+
+# Ejecución única
+python main.py
+
+# Modo test (sin notificaciones)
+python main.py --test
+
+# Listar portales
+python main.py --list-portals
+```
+
+## 🚀 Futuras Mejoras
+
+- [ ] Implementar Selenium para Idealista, Fotocasa, Pisos.com
+- [ ] Añadir más portales regionales
+- [ ] Dashboard web para gestión
+- [ ] Filtros por zonas específicas
+- [ ] Histórico de precios
 
 ## ⚠️ Consideraciones Legales
 
 - Este bot es para **uso personal y no comercial**
 - Respeta los términos de servicio de cada portal
-- El bot incluye delays y respeta `robots.txt`
-- No uses el bot para scraping masivo o comercial
-
-## 🐛 Solución de Problemas
-
-### El bot no encuentra anuncios
-- Verifica que los filtros no sean demasiado restrictivos
-- Algunos portales pueden haber cambiado su estructura HTML
-- Ejecuta con `--test` para ver los logs detallados
-
-### Error de autenticación en email
-- Asegúrate de usar una "Contraseña de aplicación" de Google
-- Verifica que la verificación en 2 pasos esté activada
-
-### Telegram no envía mensajes
-- Verifica el token del bot
-- Asegúrate de haber iniciado una conversación con el bot
-- Comprueba que el Chat ID es correcto
+- El bot incluye delays y respeta buenas prácticas
+- No uses para scraping masivo o comercial
+- Los datos son públicos y accesibles manualmente
 
 ## 📝 Licencia
 
@@ -282,3 +359,7 @@ MIT License - Ver [LICENSE](LICENSE) para más detalles.
 ## 🤝 Contribuciones
 
 Las contribuciones son bienvenidas. Por favor, abre un issue primero para discutir los cambios propuestos.
+
+---
+
+**Desarrollado por Claude Code** 🤖
