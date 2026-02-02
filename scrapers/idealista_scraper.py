@@ -1,28 +1,34 @@
 """
 Scraper para Idealista.com - Portal líder inmobiliario en España.
 https://www.idealista.com
+
+Requires Selenium due to anti-bot protection (JavaScript rendering).
 """
 
 import re
-from typing import Any, Dict, List
+import time
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode, urljoin
 
 from bs4 import BeautifulSoup
 
-from .base_scraper import BaseScraper
+from .base_scraper import SeleniumBaseScraper
 
 
-class IdealistaScraper(BaseScraper):
+class IdealistaScraper(SeleniumBaseScraper):
     """
-    Scraper para Idealista.com
+    Scraper para Idealista.com using Selenium.
 
     Idealista es el portal inmobiliario líder en España con más de 50M de visitas
     mensuales y más de 1.2M de anuncios.
+
+    Uses Selenium to bypass anti-bot protection and JavaScript rendering.
     """
 
     def __init__(self, config: Dict[str, Any] = None):
         super().__init__(config)
         self.base_url = 'https://www.idealista.com'
+        self.name = 'idealista'
 
     def build_search_url(self, filters: Dict[str, Any]) -> str:
         """
@@ -225,7 +231,7 @@ class IdealistaScraper(BaseScraper):
 
         return details
 
-    def extract_next_page_url(self, html: str, current_url: str) -> str:
+    def get_next_page_url(self, html: str, current_url: str) -> Optional[str]:
         """
         Extrae URL de la siguiente página de resultados.
 
@@ -249,4 +255,4 @@ class IdealistaScraper(BaseScraper):
             next_url = urljoin(self.base_url, next_link.get('href'))
             return next_url
 
-        return ""
+        return None

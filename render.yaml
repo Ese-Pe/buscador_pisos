@@ -1,45 +1,12 @@
-# =============================================================================
-# Render.com - Configuración de despliegue
-# =============================================================================
-# Este archivo configura el despliegue automático en Render.com
-
 services:
-  # Servicio principal del bot
   - type: web
-    name: real-estate-bot
-    env: python
-    region: frankfurt  # Más cercano a España
-    plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: python server.py
-    healthCheckPath: /health
+    name: buscador-pisos
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: BOT_MODE
-        value: production
-      - key: SMTP_USERNAME
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_CHAT_IDS
         sync: false
       - key: RENDER_SERVICE_URL
         sync: false
-      - key: CHROMIUM_PATH
-        value: /usr/bin/chromium
-
-# Cron Jobs (requiere plan de pago o configuración manual)
-# Los planes gratuitos de Render no soportan cron jobs nativos
-# Alternativa: usar un servicio externo como cron-job.org
-
-# Para planes de pago, descomentar:
-# cron:
-#   - name: morning-scan
-#     schedule: "0 9 * * *"  # 09:00 UTC
-#     command: python main.py
-#   - name: evening-scan
-#     schedule: "30 21 * * *"  # 21:30 UTC
-#     command: python main.py

@@ -521,40 +521,114 @@ class SeleniumBaseScraper(BaseScraper):
     def driver(self):
         """
         Obtiene o crea una instancia de Selenium WebDriver.
-        
+
         Returns:
             WebDriver configurado
         """
         if self._driver is None:
+            import os
+            import platform
             from selenium import webdriver
             from selenium.webdriver.chrome.options import Options
             from selenium.webdriver.chrome.service import Service
-            
+
             options = Options()
-            options.add_argument('--headless')
+            options.add_argument('--headless=new')  # New headless mode
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
             options.add_argument(f'--user-agent={random.choice(self.user_agents)}')
             options.add_argument('--window-size=1920,1080')
             options.add_argument('--disable-blink-features=AutomationControlled')
-            
-            # Intentar usar chromedriver del sistema
-            try:
-                self._driver = webdriver.Chrome(options=options)
-            except Exception:
-                # Intentar con webdriver-manager
+            options.add_argument('--disable-extensions')
+            options.add_argument('--disable-infobars')
+            options.add_argument('--remote-debugging-port=9222')
+
+            # Additional options for stability on Linux servers
+            if platform.system() == 'Linux':
+                options.add_argument('--disable-software-rasterizer')
+                options.add_argument('--single-process')
+
+                # Check for environment variable first (Docker)
+                chrome_bin = os.environ.get('CHROME_BIN')
+                if chrome_bin and os.path.exists(chrome_bin):
+                    options.binary_location = chrome_bin
+                    self.logger.info(f"Using Chromium from CHROME_BIN: {chrome_bin}")
+                else:
+                    # Try to find Chromium binary on Render/Linux
+                    chromium_paths = [
+                        '/usr/bin/chromium',
+                        '/usr/bin/chromium-browser',
+                        '/usr/bin/google-chrome',
+                        '/usr/bin/google-chrome-stable',
+                    ]
+                    for path in chromium_paths:
+                        if os.path.exists(path):
+                            options.binary_location = path
+                            self.logger.info(f"Using Chromium at: {path}")
+                            break
+
+            # Try different methods to initialize the driver
+            driver_initialized = False
+
+            # Method 1: Try system chromedriver
+            if not driver_initialized:
+                try:
+                    # Check for environment variable first (Docker)
+                    chromedriver_env = os.environ.get('CHROMEDRIVER_PATH')
+                    if chromedriver_env and os.path.exists(chromedriver_env):
+                        service = Service(chromedriver_env)
+                        self._driver = webdriver.Chrome(service=service, options=options)
+                        driver_initialized = True
+                        self.logger.info(f"Using chromedriver from CHROMEDRIVER_PATH: {chromedriver_env}")
+                    else:
+                        # Check for chromedriver in common Linux paths
+                        chromedriver_paths = [
+                            '/usr/bin/chromedriver',
+                            '/usr/lib/chromium/chromedriver',
+                            '/usr/lib/chromium-browser/chromedriver',
+                        ]
+                        for path in chromedriver_paths:
+                            if os.path.exists(path):
+                                service = Service(path)
+                                self._driver = webdriver.Chrome(service=service, options=options)
+                                driver_initialized = True
+                                self.logger.info(f"Using chromedriver at: {path}")
+                                break
+
+                    if not driver_initialized:
+                        self._driver = webdriver.Chrome(options=options)
+                        driver_initialized = True
+                except Exception as e:
+                    self.logger.warning(f"⚠️ System chromedriver failed: {e}")
+
+            # Method 2: Try webdriver-manager
+            if not driver_initialized:
                 try:
                     from webdriver_manager.chrome import ChromeDriverManager
-                    service = Service(ChromeDriverManager().install())
-                    self._driver = webdriver.Chrome(service=service, options=options)
+                    from webdriver_manager.core.os_manager import ChromeType
+
+                    # Try Chromium driver first (for Render/Linux)
+                    try:
+                        service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+                        self._driver = webdriver.Chrome(service=service, options=options)
+                        driver_initialized = True
+                    except Exception:
+                        # Fallback to Chrome driver
+                        service = Service(ChromeDriverManager().install())
+                        self._driver = webdriver.Chrome(service=service, options=options)
+                        driver_initialized = True
                 except Exception as e:
-                    self.logger.error(f"No se pudo inicializar Selenium: {e}")
-                    raise
-            
+                    self.logger.error(f"webdriver-manager failed: {e}")
+
+            if not driver_initialized:
+                self.logger.error("❌ SELENIUM FAILED: No se pudo inicializar WebDriver")
+                self.logger.error("   Verifique que Chromium está instalado en el servidor")
+                raise RuntimeError("No se pudo inicializar Selenium WebDriver - Chromium no disponible")
+
             self._driver.implicitly_wait(10)
-            self.logger.info("Selenium WebDriver inicializado")
-        
+            self.logger.info("✅ Selenium WebDriver inicializado correctamente")
+
         return self._driver
     
     def _fetch_page(self, url: str) -> Optional[str]:

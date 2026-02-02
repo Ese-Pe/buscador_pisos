@@ -116,13 +116,13 @@ portals:
     enabled: true
     priority: 1
   idealista:
-    enabled: false  # Blocked by anti-bot protection - would need Selenium
+    enabled: false  # Requires Docker runtime for Selenium
     priority: 1
   fotocasa:
-    enabled: false  # Blocked by anti-bot protection - would need Selenium
+    enabled: false  # Requires Docker runtime for Selenium
     priority: 1
   pisos:
-    enabled: false  # Blocked by anti-bot protection - would need Selenium
+    enabled: false  # Requires Docker runtime for Selenium
     priority: 1
   bienici:
     enabled: false

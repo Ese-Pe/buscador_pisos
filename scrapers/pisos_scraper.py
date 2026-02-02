@@ -1,28 +1,33 @@
 """
 Scraper para Pisos.com - Portal inmobiliario establecido desde 1996.
 https://www.pisos.com
+
+Requires Selenium due to anti-bot protection (JavaScript rendering).
 """
 
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode, urljoin
 
 from bs4 import BeautifulSoup
 
-from .base_scraper import BaseScraper
+from .base_scraper import SeleniumBaseScraper
 
 
-class PisosScraper(BaseScraper):
+class PisosScraper(SeleniumBaseScraper):
     """
-    Scraper para Pisos.com
+    Scraper para Pisos.com using Selenium.
 
     Pisos.com es un portal inmobiliario español activo desde 1996,
     especialmente conocido por su amplia oferta de alquileres.
+
+    Uses Selenium to bypass anti-bot protection and JavaScript rendering.
     """
 
     def __init__(self, config: Dict[str, Any] = None):
         super().__init__(config)
         self.base_url = 'https://www.pisos.com'
+        self.name = 'pisos'
 
     def build_search_url(self, filters: Dict[str, Any]) -> str:
         """
@@ -250,7 +255,7 @@ class PisosScraper(BaseScraper):
 
         return details
 
-    def extract_next_page_url(self, html: str, current_url: str) -> str:
+    def get_next_page_url(self, html: str, current_url: str) -> Optional[str]:
         """
         Extrae URL de la siguiente página.
         """
@@ -276,4 +281,4 @@ class PisosScraper(BaseScraper):
             next_url = urljoin(self.base_url, next_link.get('href'))
             return next_url
 
-        return ""
+        return None

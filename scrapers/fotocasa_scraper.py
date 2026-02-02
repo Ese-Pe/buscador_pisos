@@ -1,28 +1,33 @@
 """
 Scraper para Fotocasa.es - Portal inmobiliario con 13M+ visitas mensuales.
 https://www.fotocasa.es
+
+Requires Selenium due to anti-bot protection (JavaScript rendering).
 """
 
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode, urljoin
 
 from bs4 import BeautifulSoup
 
-from .base_scraper import BaseScraper
+from .base_scraper import SeleniumBaseScraper
 
 
-class FotocasaScraper(BaseScraper):
+class FotocasaScraper(SeleniumBaseScraper):
     """
-    Scraper para Fotocasa.es
+    Scraper para Fotocasa.es using Selenium.
 
     Fotocasa es uno de los principales portales inmobiliarios en España
     con más de 13 millones de visitas mensuales.
+
+    Uses Selenium to bypass anti-bot protection and JavaScript rendering.
     """
 
     def __init__(self, config: Dict[str, Any] = None):
         super().__init__(config)
         self.base_url = 'https://www.fotocasa.es'
+        self.name = 'fotocasa'
 
     def build_search_url(self, filters: Dict[str, Any]) -> str:
         """
@@ -236,7 +241,7 @@ class FotocasaScraper(BaseScraper):
 
         return details
 
-    def extract_next_page_url(self, html: str, current_url: str) -> str:
+    def get_next_page_url(self, html: str, current_url: str) -> Optional[str]:
         """
         Extrae URL de la siguiente página.
 
@@ -262,4 +267,4 @@ class FotocasaScraper(BaseScraper):
             next_url = urljoin(self.base_url, next_link.get('href'))
             return next_url
 
-        return ""
+        return None

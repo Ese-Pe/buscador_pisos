@@ -16,18 +16,20 @@ Bot automatizado para monitorizar ofertas de pisos en portales inmobiliarios esp
 ## 📋 Portales Soportados
 
 ### Actualmente Funcionando
-- ✅ **Tucasa** (tucasa.com) - Portal principal, 40+ listados
+- ✅ **Tucasa** (tucasa.com) - Portal principal (HTTP requests)
+- ✅ **Idealista** (idealista.com) - Portal líder en España (Selenium)
+- ✅ **Fotocasa** (fotocasa.es) - 13M+ visitas mensuales (Selenium)
+- ✅ **Pisos.com** (pisos.com) - Desde 1996 (Selenium)
 
-### Disponibles para Selenium (futuro)
-- 🔄 Idealista, Fotocasa, Pisos.com (requieren Selenium)
-- 🔄 Yaencontre, Bienici
+### Disponibles (deshabilitados)
+- 🔄 Yaencontre, Bienici (requieren configuración adicional)
 
 ### Portales Bancarios
 - 🔄 Altamira, Haya, Solvia, Aliseda (requieren Selenium)
 - 🔄 Anticipa, Servihabitat, BBVA Valora
 - 🔄 Bankinter, Kutxabank, Ibercaja, Cajamar
 
-> **Nota**: Los portales marcados con 🔄 están implementados pero deshabilitados por protección anti-bot. Se pueden activar implementando Selenium.
+> **Nota**: Los portales bancarios están implementados pero deshabilitados. Se pueden activar en `config/config.yaml`.
 
 ## 🚀 Despliegue en Render.com (Recomendado)
 
@@ -45,8 +47,15 @@ Bot automatizado para monitorizar ofertas de pisos en portales inmobiliarios esp
    - **Name**: `buscador-pisos`
    - **Region**: Frankfurt (o tu región)
    - **Branch**: `main`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `python server.py`
+   - **Runtime**: `Docker` (Render detectará el Dockerfile automáticamente)
+
+### 🌐 Selenium / Chromium (Docker)
+
+El proyecto incluye un `Dockerfile` que instala Chromium y chromedriver automáticamente. Render detectará el Dockerfile y usará Docker para el despliegue.
+
+**Importante**: Si Render no usa Docker automáticamente, ve a Settings → Runtime y selecciona "Docker".
+
+Los scrapers de Idealista, Fotocasa y Pisos.com usan Selenium para evitar la protección anti-bot y renderizar JavaScript.
 
 ### 3. Variables de Entorno (CRÍTICO)
 
@@ -277,13 +286,13 @@ buscador_pisos/
 │   ├── config.yaml       # Configuración general y portales
 │   └── filters.yaml      # Filtros de búsqueda y perfiles
 ├── scrapers/
-│   ├── base_scraper.py   # Clase base abstracta
-│   ├── tucasa_scraper.py # ✅ Funcionando
-│   ├── idealista_scraper.py # 🔄 Necesita Selenium
-│   ├── fotocasa_scraper.py  # 🔄 Necesita Selenium
-│   ├── pisos_scraper.py     # 🔄 Necesita Selenium
-│   ├── yaencontre_scraper.py # 🔄 Necesita Selenium
-│   ├── bienici_scraper.py    # 🔄 Necesita Selenium
+│   ├── base_scraper.py   # Clases base (HTTP y Selenium)
+│   ├── tucasa_scraper.py # ✅ HTTP
+│   ├── idealista_scraper.py # ✅ Selenium
+│   ├── fotocasa_scraper.py  # ✅ Selenium
+│   ├── pisos_scraper.py     # ✅ Selenium
+│   ├── yaencontre_scraper.py # 🔄 Selenium (deshabilitado)
+│   ├── bienici_scraper.py    # 🔄 Selenium (deshabilitado)
 │   └── generic_scraper.py  # Para portales bancarios
 ├── database/
 │   ├── models.py         # Modelos de datos
@@ -295,6 +304,7 @@ buscador_pisos/
 │   └── helpers.py
 ├── main.py               # Bot runner
 ├── server.py             # HTTP server + scheduler + keep-alive
+├── Dockerfile            # Docker image con Chromium para Render
 ├── requirements.txt
 └── README.md
 ```
@@ -338,11 +348,12 @@ python main.py --list-portals
 
 ## 🚀 Futuras Mejoras
 
-- [ ] Implementar Selenium para Idealista, Fotocasa, Pisos.com
+- [x] ~~Implementar Selenium para Idealista, Fotocasa, Pisos.com~~
 - [ ] Añadir más portales regionales
 - [ ] Dashboard web para gestión
 - [ ] Filtros por zonas específicas
 - [ ] Histórico de precios
+- [ ] Activar portales bancarios con Selenium
 
 ## ⚠️ Consideraciones Legales
 
