@@ -116,13 +116,13 @@ portals:
     enabled: true
     priority: 1
   idealista:
-    enabled: false  # Requires Docker runtime for Selenium
+    enabled: true  # Selenium with Docker
     priority: 1
   fotocasa:
-    enabled: false  # Requires Docker runtime for Selenium
+    enabled: true  # Selenium with Docker
     priority: 1
   pisos:
-    enabled: false  # Requires Docker runtime for Selenium
+    enabled: true  # Selenium with Docker
     priority: 1
   bienici:
     enabled: false
