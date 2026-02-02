@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Listings - Flat Seeker{% endblock %}
+
+{% block content %}
+<div class="listings-page">
+    <div class="page-header">
+        <h1>All Listings</h1>
+        <span class="listing-count">{{ listings|length }} results</span>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+        <form method="GET" action="/listings" class="filters-form">
+            <div class="filter-group">
+                <label>Portal</label>
+                <select name="portal">
+                    <option value="">All Portals</option>
+                    {% for p in portals %}
+                    <option value="{{ p }}" {% if filters.portal == p %}selected{% endif %}>{{ p|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Max Price</label>
+                <input type="number" name="max_price" placeholder="e.g. 300000" value="{{ filters.max_price or '' }}">
+            </div>
+            <div class="filter-group">
+                <label>Min Surface</label>
+                <input type="number" name="min_surface" placeholder="e.g. 80" value="{{ filters.min_surface or '' }}">
+            </div>
+            <div class="filter-group">
+                <label>Min Bedrooms</label>
+                <input type="number" name="min_bedrooms" placeholder="e.g. 3" value="{{ filters.min_bedrooms or '' }}">
+            </div>
+            <div class="filter-group">
+                <label>City</label>
+                <input type="text" name="city" placeholder="e.g. Zaragoza" value="{{ filters.city or '' }}">
+            </div>
+            <button type="submit" class="btn btn-secondary">Filter</button>
+            <a href="/listings" class="btn btn-ghost">Clear</a>
+        </form>
+    </div>
+
+    <!-- Listings Table -->
+    <div class="table-container">
+        <table class="listings-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Portal</th>
+                    <th>Location</th>
+                    <th>Price</th>
+                    <th>Surface</th>
+                    <th>Rooms</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for listing in listings %}
+                <tr class="{% if listing.is_new %}new-listing{% endif %}">
+                    <td class="title-cell">
+                        <a href="{{ listing.url }}" target="_blank" class="listing-link">
+                            {{ listing.title[:50] }}{% if listing.title|length > 50 %}...{% endif %}
+                        </a>
+                        {% if listing.is_new %}<span class="new-badge">NEW</span>{% endif %}
+                    </td>
+                    <td><span class="portal-badge {{ listing.portal }}">{{ listing.portal }}</span></td>
+                    <td>{{ listing.city or listing.zone or '-' }}</td>
+                    <td class="price-cell">
+                        {% if listing.price %}{{ "{:,.0f}".format(listing.price).replace(",", ".") }}€{% else %}-{% endif %}
+                    </td>
+                    <td>{% if listing.surface %}{{ listing.surface }} m²{% else %}-{% endif %}</td>
+                    <td>{% if listing.bedrooms %}{{ listing.bedrooms }}{% else %}-{% endif %}</td>
+                    <td class="date-cell">{{ listing.first_seen[:10] if listing.first_seen else '-' }}</td>
+                    <td>
+                        <a href="{{ listing.url }}" target="_blank" class="btn btn-small">View</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="no-results">No listings found matching your criteria.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

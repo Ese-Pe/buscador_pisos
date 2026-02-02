@@ -26,6 +26,9 @@ python-telegram-bot>=20.0
 # Utilidades
 urllib3>=2.0.0
 
+# Dashboard Web
+flask>=3.0.0
+
 # Opcional: Scrapy para proyectos más avanzados
 # scrapy>=2.11.0
 

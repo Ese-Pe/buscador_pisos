@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Flat Seeker{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="page-header">
+        <h1>Dashboard</h1>
+        <button class="btn btn-primary" onclick="triggerRun()">
+            <span class="btn-icon">▶</span> Run Now
+        </button>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+                <span class="stat-value">{{ stats.total_listings }}</span>
+                <span class="stat-label">Total Listings</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+                <span class="stat-value">{{ stats.active_listings }}</span>
+                <span class="stat-label">Active</span>
+            </div>
+        </div>
+        <div class="stat-card highlight">
+            <div class="stat-icon">✨</div>
+            <div class="stat-content">
+                <span class="stat-value">{{ stats.new_listings }}</span>
+                <span class="stat-label">New Today</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🌐</div>
+            <div class="stat-content">
+                <span class="stat-value">{{ stats.by_portal|length }}</span>
+                <span class="stat-label">Portals</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Portal Stats -->
+    <div class="section">
+        <h2>Listings by Portal</h2>
+        <div class="portal-grid">
+            {% for portal, data in stats.by_portal.items() %}
+            <div class="portal-card">
+                <div class="portal-name">{{ portal|title }}</div>
+                <div class="portal-stats">
+                    <span class="portal-total">{{ data.total }} total</span>
+                    <span class="portal-active">{{ data.active }} active</span>
+                </div>
+                <div class="portal-bar">
+                    <div class="portal-bar-fill" style="width: {{ (data.active / data.total * 100) if data.total > 0 else 0 }}%"></div>
+                </div>
+            </div>
+            {% else %}
+            <p class="no-data">No portal data yet. Run the bot to start collecting listings.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Last Run Info -->
+    <div class="section">
+        <h2>Last Execution</h2>
+        {% if stats.last_run %}
+        <div class="last-run-card">
+            <div class="run-info">
+                <div class="run-stat">
+                    <span class="run-label">Time</span>
+                    <span class="run-value">{{ stats.last_run.time[:19] if stats.last_run.time else 'N/A' }}</span>
+                </div>
+                <div class="run-stat">
+                    <span class="run-label">New Found</span>
+                    <span class="run-value highlight">{{ stats.last_run.new_found }}</span>
+                </div>
+                <div class="run-stat">
+                    <span class="run-label">Status</span>
+                    <span class="run-value status-{{ stats.last_run.status }}">{{ stats.last_run.status }}</span>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <p class="no-data">No executions yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Recent Listings -->
+    <div class="section">
+        <h2>Recent Listings</h2>
+        <div class="listings-preview">
+            {% for listing in recent_listings[:5] %}
+            <div class="listing-row">
+                <div class="listing-info">
+                    <a href="{{ listing.url }}" target="_blank" class="listing-title">{{ listing.title[:60] }}{% if listing.title|length > 60 %}...{% endif %}</a>
+                    <span class="listing-meta">{{ listing.portal }} · {{ listing.city }}</span>
+                </div>
+                <div class="listing-price">
+                    {% if listing.price %}{{ "{:,.0f}".format(listing.price).replace(",", ".") }}€{% else %}N/A{% endif %}
+                </div>
+                <div class="listing-details">
+                    {% if listing.surface %}{{ listing.surface }} m²{% endif %}
+                    {% if listing.bedrooms %} · {{ listing.bedrooms }} hab{% endif %}
+                </div>
+            </div>
+            {% else %}
+            <p class="no-data">No listings yet.</p>
+            {% endfor %}
+        </div>
+        {% if recent_listings|length > 5 %}
+        <a href="/listings" class="view-all">View all listings →</a>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function triggerRun() {
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-icon">⏳</span> Running...';
+
+    fetch('/run')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                btn.disabled = false;
+                btn.innerHTML = '<span class="btn-icon">▶</span> Run Now';
+            } else {
+                setTimeout(() => location.reload(), 3000);
+            }
+        })
+        .catch(err => {
+            alert('Error: ' + err);
+            btn.disabled = false;
+            btn.innerHTML = '<span class="btn-icon">▶</span> Run Now';
+        });
+}
+</script>
+{% endblock %}

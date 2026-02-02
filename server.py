@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Servidor HTTP simple para health checks y keep-alive en Render.com.
-También puede ejecutar el bot bajo demanda vía webhook.
-Con modo de ejecución periódica automática.
+Servidor Flask para el dashboard y API del bot inmobiliario.
+Incluye health checks, keep-alive y ejecución periódica para Render.com.
 """
 
 import json
@@ -11,13 +10,15 @@ import sys
 import threading
 import time
 from datetime import datetime
-from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+
+from flask import Flask, render_template, request, jsonify
 
 # Add root directory to path
 ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
+
+app = Flask(__name__)
 
 # Variable global para el estado del bot
 bot_status = {
@@ -29,113 +30,190 @@ bot_status = {
 }
 
 
-class BotHandler(BaseHTTPRequestHandler):
-    """Handler HTTP para el bot."""
-    
-    def do_GET(self):
-        """Maneja peticiones GET."""
-        parsed = urlparse(self.path)
-        path = parsed.path
-        
-        if path == "/" or path == "/health":
-            self._send_health()
-        elif path == "/status":
-            self._send_status()
-        elif path == "/run":
-            self._trigger_run(parsed.query)
-        else:
-            self._send_404()
-    
-    def do_POST(self):
-        """Maneja peticiones POST (para webhooks)."""
-        if self.path == "/webhook/run":
-            self._trigger_run("")
-        else:
-            self._send_404()
-    
-    def _send_health(self):
-        """Responde al health check."""
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        self.wfile.write(b"OK")
-    
-    def _send_status(self):
-        """Envía el estado actual del bot."""
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps(bot_status, indent=2).encode())
-    
-    def _send_404(self):
-        """Respuesta 404."""
-        self.send_response(404)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        self.wfile.write(b"Not Found")
-    
-    def _trigger_run(self, query_string):
-        """Dispara una ejecución del bot."""
-        global bot_status
-        
-        if bot_status["status"] == "running":
-            self.send_response(409)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({
-                "error": "Bot is already running"
-            }).encode())
-            return
-        
-        # Parsear parámetros
-        params = parse_qs(query_string)
-        test_mode = "test" in params
-        
-        # Ejecutar en hilo separado
-        thread = threading.Thread(
-            target=self._run_bot,
-            args=(test_mode,)
-        )
-        thread.start()
-        
-        self.send_response(202)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps({
-            "message": "Bot execution started",
-            "test_mode": test_mode
-        }).encode())
-    
-    def _run_bot(self, test_mode=False):
-        """Ejecuta el bot."""
-        global bot_status
-        
-        bot_status["status"] = "running"
-        bot_status["last_run"] = datetime.now().isoformat()
-        
-        try:
-            from main import RealEstateBot
-            bot = RealEstateBot()
-            # Increased max_pages from 10 to 25 for better Tucasa coverage
-            stats = bot.run(test_mode=test_mode, max_pages=25)
-            
-            bot_status["last_run_stats"] = {
-                "total_found": stats.total_listings_found,
-                "new_listings": stats.new_listings,
-                "errors": stats.errors,
-                "duration": str(stats.end_time - stats.start_time) if stats.end_time else None,
-                "portal_stats": stats.portal_stats  # Add per-portal statistics
-            }
-            bot_status["status"] = "completed"
-            
-        except Exception as e:
-            bot_status["status"] = "error"
-            bot_status["last_run_stats"] = {"error": str(e)}
-    
-    def log_message(self, format, *args):
-        """Silencia los logs por defecto."""
-        pass
+# =============================================================================
+# DASHBOARD ROUTES
+# =============================================================================
 
+@app.route('/')
+def dashboard():
+    """Dashboard principal."""
+    from database import DatabaseManager
+    db = DatabaseManager()
+
+    stats = db.get_stats()
+    recent_listings = db.search_listings(limit=10)
+
+    # Convert listings to dicts for template
+    recent = [l.to_dict() for l in recent_listings]
+
+    return render_template('dashboard.html',
+        active_page='dashboard',
+        bot_status=bot_status['status'],
+        stats=stats,
+        recent_listings=recent
+    )
+
+
+@app.route('/listings')
+def listings():
+    """Página de listados con filtros."""
+    from database import DatabaseManager
+    db = DatabaseManager()
+
+    # Get filter parameters
+    filters = {
+        'portal': request.args.get('portal'),
+        'city': request.args.get('city'),
+        'max_price': request.args.get('max_price', type=int),
+        'min_surface': request.args.get('min_surface', type=int),
+        'min_bedrooms': request.args.get('min_bedrooms', type=int),
+    }
+
+    # Search listings
+    results = db.search_listings(
+        portal=filters['portal'],
+        city=filters['city'],
+        max_price=filters['max_price'],
+        min_surface=filters['min_surface'],
+        min_bedrooms=filters['min_bedrooms'],
+        limit=200
+    )
+
+    # Convert to dicts
+    listings_data = [l.to_dict() for l in results]
+
+    # Get unique portals for filter dropdown
+    stats = db.get_stats()
+    portals = list(stats.get('by_portal', {}).keys())
+
+    return render_template('listings.html',
+        active_page='listings',
+        bot_status=bot_status['status'],
+        listings=listings_data,
+        portals=portals,
+        filters=filters
+    )
+
+
+@app.route('/history')
+def history():
+    """Página de historial de ejecuciones."""
+    from database import DatabaseManager
+    db = DatabaseManager()
+
+    runs = db.get_run_stats(limit=50)
+
+    # Convert to dicts and calculate duration
+    runs_data = []
+    for run in runs:
+        d = run.to_dict()
+        if run.end_time and run.start_time:
+            duration = run.end_time - run.start_time
+            d['duration_str'] = str(duration).split('.')[0]
+        else:
+            d['duration_str'] = None
+        runs_data.append(d)
+
+    return render_template('history.html',
+        active_page='history',
+        bot_status=bot_status['status'],
+        runs=runs_data
+    )
+
+
+# =============================================================================
+# API ROUTES
+# =============================================================================
+
+@app.route('/health')
+def health():
+    """Health check endpoint."""
+    return "OK", 200
+
+
+@app.route('/status')
+@app.route('/api/status')
+def status():
+    """Estado actual del bot."""
+    return jsonify(bot_status)
+
+
+@app.route('/run')
+def trigger_run():
+    """Dispara una ejecución del bot."""
+    global bot_status
+
+    if bot_status["status"] == "running":
+        return jsonify({"error": "Bot is already running"}), 409
+
+    test_mode = request.args.get('test') is not None
+
+    thread = threading.Thread(target=run_bot, args=(test_mode,))
+    thread.start()
+
+    return jsonify({
+        "message": "Bot execution started",
+        "test_mode": test_mode
+    }), 202
+
+
+@app.route('/api/listings')
+def api_listings():
+    """API endpoint para listados."""
+    from database import DatabaseManager
+    db = DatabaseManager()
+
+    portal = request.args.get('portal')
+    limit = request.args.get('limit', 100, type=int)
+
+    results = db.search_listings(portal=portal, limit=limit)
+    return jsonify([l.to_dict() for l in results])
+
+
+@app.route('/api/stats')
+def api_stats():
+    """API endpoint para estadísticas."""
+    from database import DatabaseManager
+    db = DatabaseManager()
+
+    return jsonify(db.get_stats())
+
+
+# =============================================================================
+# BOT EXECUTION
+# =============================================================================
+
+def run_bot(test_mode=False):
+    """Ejecuta el bot."""
+    global bot_status
+
+    bot_status["status"] = "running"
+    bot_status["last_run"] = datetime.now().isoformat()
+
+    try:
+        from main import RealEstateBot
+        bot = RealEstateBot()
+        stats = bot.run(test_mode=test_mode, max_pages=25)
+
+        bot_status["last_run_stats"] = {
+            "total_found": stats.total_listings_found,
+            "new_listings": stats.new_listings,
+            "errors": stats.errors,
+            "duration": str(stats.end_time - stats.start_time) if stats.end_time else None,
+            "portal_stats": stats.portal_stats
+        }
+        bot_status["status"] = "completed"
+        print(f"✅ Bot completado - {stats.new_listings} nuevos anuncios")
+
+    except Exception as e:
+        bot_status["status"] = "error"
+        bot_status["last_run_stats"] = {"error": str(e)}
+        print(f"❌ Error ejecutando bot: {e}")
+
+
+# =============================================================================
+# SCHEDULED RUNNER
+# =============================================================================
 
 class ScheduledRunner:
     """Ejecuta el bot de forma periódica."""
@@ -147,7 +225,6 @@ class ScheduledRunner:
         self._thread = None
 
     def start(self):
-        """Inicia el ejecutor periódico."""
         if self._running:
             return
 
@@ -157,74 +234,30 @@ class ScheduledRunner:
         print(f"⏰ Ejecutor periódico iniciado (cada {self.interval_hours}h)")
 
         # Ejecutar inmediatamente al inicio
-        self._schedule_immediate_run()
+        thread = threading.Thread(target=run_bot, daemon=True)
+        thread.start()
 
     def stop(self):
-        """Detiene el ejecutor periódico."""
         self._running = False
         if self._thread:
             self._thread.join(timeout=5)
 
-    def _schedule_immediate_run(self):
-        """Programa una ejecución inmediata."""
-        thread = threading.Thread(target=self._run_bot, daemon=True)
-        thread.start()
-
     def _run_loop(self):
-        """Loop principal del ejecutor."""
         while self._running:
             next_run = datetime.now().timestamp() + self.interval_seconds
             bot_status["next_scheduled_run"] = datetime.fromtimestamp(next_run).isoformat()
-
-            # Esperar hasta la próxima ejecución
             time.sleep(self.interval_seconds)
 
             if self._running and bot_status["status"] != "running":
-                self._run_bot()
-
-    def _run_bot(self):
-        """Ejecuta el bot."""
-        global bot_status
-
-        if bot_status["status"] == "running":
-            print("⚠️ Bot ya está ejecutándose, saltando ejecución programada")
-            return
-
-        bot_status["status"] = "running"
-        bot_status["last_run"] = datetime.now().isoformat()
-
-        try:
-            print(f"🤖 Ejecutando bot programado - {datetime.now().isoformat()}")
-            from main import RealEstateBot
-            bot = RealEstateBot()
-            # Increased max_pages from 10 to 25 for better Tucasa coverage
-            stats = bot.run(test_mode=False, max_pages=25)
-
-            bot_status["last_run_stats"] = {
-                "total_found": stats.total_listings_found,
-                "new_listings": stats.new_listings,
-                "errors": stats.errors,
-                "duration": str(stats.end_time - stats.start_time) if stats.end_time else None,
-                "portal_stats": stats.portal_stats  # Add per-portal statistics
-            }
-            bot_status["status"] = "completed"
-            print(f"✅ Bot completado - {stats.new_listings} nuevos anuncios")
-
-        except Exception as e:
-            bot_status["status"] = "error"
-            bot_status["last_run_stats"] = {"error": str(e)}
-            print(f"❌ Error ejecutando bot: {e}")
+                run_bot()
 
 
-# Instancia global del ejecutor periódico
-scheduled_runner = None
-
+# =============================================================================
+# KEEP ALIVE
+# =============================================================================
 
 class KeepAlive:
-    """
-    Keep-alive service to prevent Render.com from spinning down the service.
-    Pings the service URL periodically to keep it active.
-    """
+    """Keep-alive service para Render.com."""
 
     def __init__(self, service_url: str, interval_minutes: int = 10):
         self.service_url = service_url
@@ -233,7 +266,6 @@ class KeepAlive:
         self._thread = None
 
     def start(self):
-        """Start the keep-alive pinger."""
         if not self.service_url or self._running:
             return
 
@@ -241,96 +273,71 @@ class KeepAlive:
         self._thread = threading.Thread(target=self._ping_loop, daemon=True)
         self._thread.start()
         print(f"💗 Keep-alive iniciado (ping cada {self.interval_seconds // 60} minutos)")
-        print(f"   URL: {self.service_url}")
 
     def stop(self):
-        """Stop the keep-alive pinger."""
         self._running = False
         if self._thread:
             self._thread.join(timeout=5)
 
     def _ping_loop(self):
-        """Main ping loop."""
         import requests
 
         while self._running:
             time.sleep(self.interval_seconds)
-
             if not self._running:
                 break
 
             try:
-                # Ping the health endpoint
                 response = requests.get(f"{self.service_url}/health", timeout=10)
                 if response.status_code == 200:
                     print(f"💗 Keep-alive ping exitoso - {datetime.now().strftime('%H:%M:%S')}")
-                else:
-                    print(f"⚠️  Keep-alive ping falló (status {response.status_code})")
             except Exception as e:
                 print(f"⚠️  Keep-alive ping error: {e}")
 
 
-# Instancia global del keep-alive
+# =============================================================================
+# MAIN
+# =============================================================================
+
+scheduled_runner = None
 keep_alive = None
 
 
-def run_server(port=8080, enable_scheduler=True, interval_hours=6, enable_keep_alive=True):
-    """Inicia el servidor HTTP."""
+def run_server(port=10000, enable_scheduler=True, interval_hours=6, enable_keep_alive=True):
+    """Inicia el servidor Flask."""
     global scheduled_runner, keep_alive
 
-    # Load config to get keep-alive settings
     from utils import load_config
     config = load_config('config/config.yaml')
     keep_alive_config = config.get('keep_alive', {})
 
-    # Iniciar keep-alive si está habilitado
+    # Iniciar keep-alive
     if enable_keep_alive and keep_alive_config.get('enabled', False):
-        service_url = os.environ.get('RENDER_SERVICE_URL') or keep_alive_config.get('service_url', '')
-        if service_url:
-            # Remove ${} variable syntax if present
-            if '${' in service_url:
-                service_url = os.environ.get('RENDER_SERVICE_URL', '')
-
-            if service_url:
-                ping_interval = keep_alive_config.get('ping_interval_minutes', 10)
-                keep_alive = KeepAlive(service_url=service_url, interval_minutes=ping_interval)
-                keep_alive.start()
+        service_url = os.environ.get('RENDER_SERVICE_URL', '')
+        if service_url and '${' not in service_url:
+            ping_interval = keep_alive_config.get('ping_interval_minutes', 10)
+            keep_alive = KeepAlive(service_url=service_url, interval_minutes=ping_interval)
+            keep_alive.start()
 
     # Iniciar ejecutor periódico
     if enable_scheduler:
         scheduled_runner = ScheduledRunner(interval_hours=interval_hours)
         scheduled_runner.start()
 
-    server = HTTPServer(("0.0.0.0", port), BotHandler)
-    print(f"🌐 Servidor HTTP iniciado correctamente")
+    print(f"🌐 Servidor Flask iniciado")
     print(f"   Puerto: {port}")
-    print(f"   Host: 0.0.0.0 (escuchando en todas las interfaces)")
-    print(f"   Health check: http://localhost:{port}/health")
-    print(f"   Status: http://localhost:{port}/status")
-    print(f"   Trigger run: http://localhost:{port}/run")
-    print(f"   Scheduler: {'habilitado' if enable_scheduler else 'deshabilitado'} ({interval_hours}h)")
+    print(f"   Dashboard: http://localhost:{port}/")
+    print(f"   Health: http://localhost:{port}/health")
+    print(f"   Scheduler: {'habilitado' if enable_scheduler else 'deshabilitado'}")
     print(f"   Keep-alive: {'habilitado' if keep_alive else 'deshabilitado'}")
 
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("\n🛑 Deteniendo servidor...")
-        if scheduled_runner:
-            scheduled_runner.stop()
-        if keep_alive:
-            keep_alive.stop()
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    # Ejecutar cada 6 horas por defecto (configurable vía env var)
+    port = int(os.environ.get("PORT", 10000))
     interval = int(os.environ.get("SCRAPE_INTERVAL_HOURS", 6))
     enable_scheduler = os.environ.get("ENABLE_SCHEDULER", "true").lower() == "true"
 
     print(f"🚀 Iniciando servidor en puerto {port}")
-    print(f"📊 Variables de entorno:")
-    print(f"   PORT={port}")
-    print(f"   SCRAPE_INTERVAL_HOURS={interval}")
-    print(f"   ENABLE_SCHEDULER={enable_scheduler}")
-
     run_server(port=port, enable_scheduler=enable_scheduler, interval_hours=interval)

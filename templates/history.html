@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Run History - Flat Seeker{% endblock %}
+
+{% block content %}
+<div class="history-page">
+    <div class="page-header">
+        <h1>Execution History</h1>
+    </div>
+
+    <div class="table-container">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Date/Time</th>
+                    <th>Status</th>
+                    <th>Total Found</th>
+                    <th>New Listings</th>
+                    <th>Errors</th>
+                    <th>Duration</th>
+                    <th>Portals</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for run in runs %}
+                <tr>
+                    <td class="date-cell">
+                        {{ run.start_time[:19] if run.start_time else '-' }}
+                    </td>
+                    <td>
+                        <span class="status-pill {{ run.status }}">{{ run.status }}</span>
+                    </td>
+                    <td>{{ run.total_listings_found or 0 }}</td>
+                    <td class="highlight">{{ run.new_listings or 0 }}</td>
+                    <td class="{% if run.errors > 0 %}error{% endif %}">{{ run.errors or 0 }}</td>
+                    <td>
+                        {% if run.end_time and run.start_time %}
+                            {{ run.duration_str or '-' }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="portals-cell">
+                        {% if run.portal_stats %}
+                            {% for portal, stats in run.portal_stats.items() %}
+                            <span class="portal-mini {{ portal }}">{{ portal }}: {{ stats.found }}</span>
+                            {% endfor %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="no-results">No execution history yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

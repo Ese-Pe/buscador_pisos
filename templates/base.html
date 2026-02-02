@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Flat Seeker{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🏠</span>
+            <span class="brand-name">Flat Seeker</span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="/listings" class="nav-link {% if active_page == 'listings' %}active{% endif %}">Listings</a>
+            <a href="/history" class="nav-link {% if active_page == 'history' %}active{% endif %}">History</a>
+        </div>
+        <div class="nav-actions">
+            <span class="status-badge {% if bot_status == 'running' %}running{% elif bot_status == 'completed' %}completed{% else %}idle{% endif %}">
+                {{ bot_status|default('idle') }}
+            </span>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>Flat Seeker &copy; 2024 - Real Estate Monitor</p>
+    </footer>
+
+    <script>
+        // Auto-refresh status every 30 seconds
+        setInterval(() => {
+            fetch('/api/status')
+                .then(r => r.json())
+                .then(data => {
+                    const badge = document.querySelector('.status-badge');
+                    badge.className = 'status-badge ' + data.status;
+                    badge.textContent = data.status;
+                });
+        }, 30000);
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
