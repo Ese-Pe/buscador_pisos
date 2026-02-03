@@ -105,6 +105,14 @@ class Listing:
     def from_dict(cls, data: Dict[str, Any]) -> 'Listing':
         """Crea un objeto desde un diccionario."""
         import json
+        from dataclasses import fields
+
+        # Get valid field names for the dataclass
+        valid_fields = {f.name for f in fields(cls)}
+
+        # Filter out unknown fields (like created_at, updated_at from DB)
+        data = {k: v for k, v in data.items() if k in valid_fields}
+
         # Convertir strings ISO a fechas
         for key in ['publication_date', 'last_update', 'first_seen', 'last_seen']:
             if data.get(key) and isinstance(data[key], str):
@@ -195,6 +203,14 @@ class RunStats:
     def from_dict(cls, data: Dict[str, Any]) -> 'RunStats':
         """Crea desde diccionario."""
         import json
+        from dataclasses import fields
+
+        # Get valid field names for the dataclass
+        valid_fields = {f.name for f in fields(cls)}
+
+        # Filter out unknown fields (like created_at from DB)
+        data = {k: v for k, v in data.items() if k in valid_fields}
+
         if isinstance(data.get('start_time'), str):
             data['start_time'] = datetime.fromisoformat(data['start_time'])
         if isinstance(data.get('end_time'), str):
