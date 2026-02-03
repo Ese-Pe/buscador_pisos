@@ -55,7 +55,8 @@ class HayaScraper(SeleniumBaseScraper):
         """
         Construye URL de búsqueda de Haya.
 
-        Formato: /inmuebles/viviendas/{province}/venta/
+        Formato: /comprar/viviendas/{province}/
+        Ejemplo: /comprar/viviendas/zaragoza/
         """
         location = filters.get('location', {})
         province = location.get('province', '').lower()
@@ -64,27 +65,15 @@ class HayaScraper(SeleniumBaseScraper):
 
         operation = filters.get('operation_type', 'compra')
         if operation in ['compra', 'venta']:
-            operation_path = 'venta'
+            operation_path = 'comprar'
         else:
-            operation_path = 'alquiler'
+            operation_path = 'alquilar'
 
+        # Haya format: /comprar/viviendas/{province}/
         if province:
-            url = f"{self.base_url}/inmuebles/viviendas/{province}/{operation_path}/"
+            url = f"{self.base_url}/{operation_path}/viviendas/{province}/"
         else:
-            url = f"{self.base_url}/inmuebles/viviendas/{operation_path}/"
-
-        params = {}
-
-        price_max = filters.get('price', {}).get('max')
-        if price_max:
-            params['precio_max'] = price_max
-
-        bedrooms_min = filters.get('bedrooms', {}).get('min')
-        if bedrooms_min:
-            params['habitaciones_min'] = bedrooms_min
-
-        if params:
-            url += '?' + urlencode(params)
+            url = f"{self.base_url}/{operation_path}/viviendas/"
 
         self.logger.info(f"Haya search URL: {url}")
         return url

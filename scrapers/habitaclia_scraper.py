@@ -31,8 +31,8 @@ class HabitacliaScraper(SeleniumBaseScraper):
         """
         Construye URL de búsqueda de Habitaclia.
 
-        Formato: /comprar-vivienda-en-{city}.htm
-        Ejemplo: /comprar-vivienda-en-zaragoza.htm
+        Formato: /viviendas-{city}.htm
+        Ejemplo: /viviendas-zaragoza.htm
         """
         location = filters.get('location', {})
         province = location.get('province', '').lower()
@@ -42,20 +42,13 @@ class HabitacliaScraper(SeleniumBaseScraper):
         province = self._normalize_for_url(province)
         city = self._normalize_for_url(city)
 
-        # Tipo de operación
-        operation = filters.get('operation_type', 'compra')
-        if operation in ['compra', 'venta']:
-            operation_path = 'comprar'
-        else:
-            operation_path = 'alquilar'
-
-        # Construir URL base
+        # Construir URL base - Habitaclia uses simple format: /viviendas-{location}.htm
         if city:
-            url = f"{self.base_url}/{operation_path}-vivienda-en-{city}.htm"
+            url = f"{self.base_url}/viviendas-{city}.htm"
         elif province:
-            url = f"{self.base_url}/{operation_path}-vivienda-en-{province}_provincia.htm"
+            url = f"{self.base_url}/viviendas-{province}.htm"
         else:
-            url = f"{self.base_url}/{operation_path}-vivienda.htm"
+            url = f"{self.base_url}/viviendas.htm"
 
         # Agregar filtros como query params
         params = {}
@@ -102,16 +95,23 @@ class HabitacliaScraper(SeleniumBaseScraper):
     def parse_listing_list(self, html: str) -> List[Dict[str, Any]]:
         """
         Parsea la página de listado de Habitaclia.
+
+        Habitaclia uses:
+        - .list-item for each property card
+        - .list-item-title for title/link
+        - .list-item-price for price
+        - .list-item-location for location
+        - .list-item-feature for features
         """
         soup = BeautifulSoup(html, 'html.parser')
         listings = []
 
-        # Habitaclia usa artículos con clase 'list-item' o contenedores de anuncios
-        items = soup.find_all('article', class_=re.compile(r'list-item|property-item'))
+        # Habitaclia uses class 'list-item' for property cards
+        items = soup.find_all(class_='list-item')
 
         if not items:
-            # Fallback: buscar por selectores alternativos
-            items = soup.select('.list-item, .property-card, [data-listid]')
+            # Fallback: try article elements or other containers
+            items = soup.find_all('article')
 
         self.logger.debug(f"Habitaclia: Found {len(items)} items in HTML ({len(html)} bytes)")
 
@@ -130,36 +130,33 @@ class HabitacliaScraper(SeleniumBaseScraper):
         """Extrae datos de un item de Habitaclia."""
         listing = {}
 
-        # URL - Buscar enlace principal
-        link = item.find('a', class_=re.compile(r'list-item-link|property-link'))
-        if not link:
-            link = item.find('a', href=re.compile(r'/vivienda|/piso|/casa'))
+        # URL and Title - from list-item-title link
+        title_link = item.find('a', class_='list-item-title')
+        if title_link:
+            if title_link.get('href'):
+                listing['url'] = urljoin(self.base_url, title_link.get('href'))
+            listing['title'] = title_link.get_text(strip=True)
 
-        if link and link.get('href'):
-            href = link.get('href')
-            listing['url'] = urljoin(self.base_url, href)
+        # Fallback URL search
+        if not listing.get('url'):
+            link = item.find('a', href=re.compile(r'/vivienda|/piso|/casa|/inmueble'))
+            if link and link.get('href'):
+                listing['url'] = urljoin(self.base_url, link.get('href'))
 
-        # Título
-        title_elem = item.find(['h2', 'h3'], class_=re.compile(r'list-item-title|title'))
-        if not title_elem:
-            title_elem = item.find('a', class_=re.compile(r'list-item-link'))
-        if title_elem:
-            listing['title'] = title_elem.get_text(strip=True)
-
-        # Precio
-        price_elem = item.find(class_=re.compile(r'list-item-price|price'))
+        # Precio - from list-item-price
+        price_elem = item.find(class_='list-item-price')
         if price_elem:
             listing['price'] = price_elem.get_text(strip=True)
 
-        # Ubicación
-        location_elem = item.find(class_=re.compile(r'list-item-location|location'))
+        # Ubicación - from list-item-location
+        location_elem = item.find(class_='list-item-location')
         if location_elem:
             listing['city'] = location_elem.get_text(strip=True)
 
-        # Características
-        details = item.find_all(class_=re.compile(r'list-item-feature|feature'))
-        for detail in details:
-            text = detail.get_text(strip=True).lower()
+        # Características - from list-item-feature elements
+        features = item.find_all(class_='list-item-feature')
+        for feature in features:
+            text = feature.get_text(strip=True).lower()
 
             if 'm²' in text or 'm2' in text:
                 listing['surface'] = text
@@ -168,16 +165,16 @@ class HabitacliaScraper(SeleniumBaseScraper):
             elif 'baño' in text:
                 listing['bathrooms'] = text
 
-        # Descripción
-        desc_elem = item.find(class_=re.compile(r'list-item-description|description'))
+        # Descripción - from list-item-description
+        desc_elem = item.find(class_='list-item-description')
         if desc_elem:
             listing['description'] = desc_elem.get_text(strip=True)
 
         # Imagen
         img_elem = item.find('img')
         if img_elem:
-            img_src = img_elem.get('src') or img_elem.get('data-src')
-            if img_src:
+            img_src = img_elem.get('src') or img_elem.get('data-src') or img_elem.get('data-lazy')
+            if img_src and not img_src.startswith('data:'):
                 listing['images'] = [img_src]
 
         return listing

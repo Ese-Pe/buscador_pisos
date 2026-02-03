@@ -59,14 +59,13 @@ class AltamiraScraper(SeleniumBaseScraper):
         """
         Construye URL de búsqueda de Altamira.
 
-        Formato: /inmuebles/viviendas/venta/{province}/
+        Formato: /venta-viviendas/{province}
+        Ejemplo: /venta-viviendas/zaragoza
         """
         location = filters.get('location', {})
         province = location.get('province', '').lower()
-        city = location.get('city', '').lower()
 
         province = self._normalize_for_url(province)
-        city = self._normalize_for_url(city)
 
         operation = filters.get('operation_type', 'compra')
         if operation in ['compra', 'venta']:
@@ -74,25 +73,11 @@ class AltamiraScraper(SeleniumBaseScraper):
         else:
             operation_path = 'alquiler'
 
-        # Construir URL
+        # Construir URL - Altamira format: /venta-viviendas/{province}
         if province:
-            url = f"{self.base_url}/inmuebles/viviendas/{operation_path}/{province}/"
+            url = f"{self.base_url}/{operation_path}-viviendas/{province}"
         else:
-            url = f"{self.base_url}/inmuebles/viviendas/{operation_path}/"
-
-        # Agregar filtros
-        params = {}
-
-        price_max = filters.get('price', {}).get('max')
-        if price_max:
-            params['precioMax'] = price_max
-
-        bedrooms_min = filters.get('bedrooms', {}).get('min')
-        if bedrooms_min:
-            params['habitacionesMin'] = bedrooms_min
-
-        if params:
-            url += '?' + urlencode(params)
+            url = f"{self.base_url}/{operation_path}-viviendas"
 
         self.logger.info(f"Altamira search URL: {url}")
         return url
