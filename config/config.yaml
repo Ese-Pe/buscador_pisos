@@ -124,37 +124,41 @@ portals:
   pisos:
     enabled: true  # Selenium with Docker
     priority: 1
+  habitaclia:
+    enabled: true  # Selenium - Popular in Catalonia and other regions
+    priority: 1
   bienici:
-    enabled: false
-    priority: 2
+    enabled: false  # French portal
+    priority: 3
   yaencontre:
     enabled: false  # Disabled temporarily - Selenium issues on Render
     priority: 2
-  
-  # Portales bancarios
-  # Disabled due to anti-bot protection (403 Forbidden)
-  # Properties from these banks are typically listed on aggregators like Idealista/Fotocasa
+
+  # Portales bancarios (Selenium scrapers)
+  # Bank properties often have good prices below market value
   altamira:
-    enabled: false  # Blocked by anti-bot protection
+    enabled: true  # Selenium - Santander bank properties
     priority: 2
   haya:
-    enabled: false  # Blocked by anti-bot protection
+    enabled: true  # Selenium - CaixaBank/Bankia properties
     priority: 2
   solvia:
-    enabled: false  # Blocked by anti-bot protection
+    enabled: true  # Selenium - Sabadell bank properties
     priority: 2
+
+  # Other bank portals (not yet implemented with dedicated Selenium scrapers)
   anticipa:
     enabled: false  # Not researched yet
-    priority: 2
+    priority: 3
   servihabitat:
     enabled: false  # Often redirects to third-party sites
-    priority: 2
+    priority: 3
   aliseda:
-    enabled: false  # Blocked by anti-bot protection
-    priority: 2
+    enabled: false  # Needs dedicated Selenium scraper
+    priority: 3
   bbva_valora:
     enabled: false
-    priority: 2
+    priority: 3
   bankinter:
     enabled: false
     priority: 3

@@ -9,21 +9,27 @@ from .bienici_scraper import BieniciScraper
 from .idealista_scraper import IdealistaScraper
 from .fotocasa_scraper import FotocasaScraper
 from .pisos_scraper import PisosScraper
+from .habitaclia_scraper import HabitacliaScraper
+from .altamira_scraper import AltamiraScraper
+from .solvia_scraper import SolviaScraper
+from .haya_scraper import HayaScraper
 from .generic_scraper import GenericScraper, create_portal_scraper, PORTAL_CONFIGS
 
 # Mapeo de nombres a clases de scrapers
 SCRAPER_CLASSES = {
-    # Agregadores principales
+    # Agregadores principales (Selenium)
     'tucasa': TucasaScraper,
     'idealista': IdealistaScraper,
     'fotocasa': FotocasaScraper,
     'pisos': PisosScraper,
+    'habitaclia': HabitacliaScraper,
     'yaencontre': YaencontreScraper,
     'bienici': BieniciScraper,
-    # Los portales bancarios usan GenericScraper con configuración
-    'altamira': lambda config: create_portal_scraper('altamira', config),
-    'solvia': lambda config: create_portal_scraper('solvia', config),
-    'haya': lambda config: create_portal_scraper('haya', config),
+    # Portales bancarios (Selenium)
+    'altamira': AltamiraScraper,
+    'solvia': SolviaScraper,
+    'haya': HayaScraper,
+    # Otros portales bancarios (GenericScraper fallback)
     'servihabitat': lambda config: create_portal_scraper('servihabitat', config),
     'aliseda': lambda config: create_portal_scraper('aliseda', config),
     'anticipa': lambda config: create_portal_scraper('anticipa', config),
@@ -82,6 +88,10 @@ __all__ = [
     'IdealistaScraper',
     'FotocasaScraper',
     'PisosScraper',
+    'HabitacliaScraper',
+    'AltamiraScraper',
+    'SolviaScraper',
+    'HayaScraper',
     'YaencontreScraper',
     'BieniciScraper',
     'GenericScraper',
