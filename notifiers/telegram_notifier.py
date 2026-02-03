@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from database import Listing
 from utils import LoggerMixin, format_price, format_surface, get_env, truncate_text
+import os
 
 
 class TelegramNotifier(LoggerMixin):
@@ -75,195 +76,121 @@ class TelegramNotifier(LoggerMixin):
     ) -> bool:
         """
         Envía notificaciones de nuevos anuncios.
-        
+
+        Envía un mensaje de resumen con link al dashboard en lugar de
+        mensajes individuales para cada anuncio.
+
         Args:
             listings: Lista de anuncios nuevos
             profile_name: Nombre del perfil de búsqueda
             test_mode: Si es True, solo imprime sin enviar
-        
+
         Returns:
             True si se envió correctamente
         """
         if not listings:
             self.logger.info("No hay anuncios nuevos para notificar")
             return True
-        
+
         if not self.is_configured():
             self.logger.warning("TelegramNotifier no está configurado correctamente")
             return False
-        
-        # Construir mensajes
-        summary_msg = self._build_summary_message(listings, profile_name)
-        listing_msgs = [self._build_listing_message(l) for l in listings]
-        
+
+        # Construir mensaje de resumen/recordatorio
+        reminder_msg = self._build_reminder_message(listings, profile_name)
+
         if test_mode:
-            self.logger.info("[TEST MODE] Mensajes que se enviarían:")
+            self.logger.info("[TEST MODE] Mensaje que se enviaría:")
             print("\n" + "="*60)
-            print("RESUMEN:")
-            print(summary_msg)
-            print("\nANUNCIOS:")
-            for msg in listing_msgs[:3]:  # Solo primeros 3 en test
-                print("-"*40)
-                print(msg)
-            if len(listing_msgs) > 3:
-                print(f"\n... y {len(listing_msgs) - 3} anuncios más")
+            print(reminder_msg)
             print("="*60 + "\n")
             return True
-        
-        # Enviar mensajes
-        return asyncio.run(self._send_messages_async(summary_msg, listing_msgs))
+
+        # Enviar solo el mensaje de resumen
+        return asyncio.run(self._send_reminder_async(reminder_msg))
     
-    async def _send_messages_async(
-        self,
-        summary: str,
-        listing_messages: List[str]
-    ) -> bool:
-        """Envía los mensajes de forma asíncrona."""
+    async def _send_reminder_async(self, message: str) -> bool:
+        """Envía el mensaje de recordatorio de forma asíncrona."""
         try:
             from telegram import Bot
             from telegram.error import TelegramError
-            
+
             bot = Bot(token=self.bot_token)
-            
             success = True
-            
+
             for chat_id in self.chat_ids:
                 try:
-                    # Enviar resumen
                     await bot.send_message(
                         chat_id=chat_id,
-                        text=summary,
+                        text=message,
                         parse_mode=self.parse_mode,
-                        disable_web_page_preview=True
+                        disable_web_page_preview=False
                     )
-                    
-                    # Enviar cada anuncio (con delay para evitar flood)
-                    for msg in listing_messages:
-                        await asyncio.sleep(0.5)  # Evitar rate limiting
-                        await bot.send_message(
-                            chat_id=chat_id,
-                            text=msg,
-                            parse_mode=self.parse_mode,
-                            disable_web_page_preview=self.disable_preview
-                        )
-                    
-                    self.logger.info(f"Notificación enviada a chat {chat_id}")
-                    
+                    self.logger.info(f"Recordatorio enviado a chat {chat_id}")
+
                 except TelegramError as e:
                     self.logger.error(f"Error enviando a chat {chat_id}: {e}")
                     success = False
-            
+
             return success
-            
+
         except Exception as e:
             self.logger.error(f"Error en envío de Telegram: {e}")
             return False
-    
-    def send_single_listing(self, listing: Listing, test_mode: bool = False) -> bool:
-        """
-        Envía una notificación de un único anuncio.
-        
-        Args:
-            listing: Anuncio a notificar
-            test_mode: Modo de prueba
-        
-        Returns:
-            True si se envió correctamente
-        """
-        return self.send_notification([listing], test_mode=test_mode)
-    
-    def _build_summary_message(self, listings: List[Listing], profile_name: str = None) -> str:
-        """Construye el mensaje de resumen."""
+
+    def _build_reminder_message(self, listings: List[Listing], profile_name: str = None) -> str:
+        """Construye el mensaje de recordatorio con resumen y link al dashboard."""
+        # Get dashboard URL from environment
+        dashboard_url = os.environ.get('RENDER_SERVICE_URL', '')
+
         lines = [
-            "🏠 <b>NUEVOS PISOS ENCONTRADOS</b>",
+            "🏠 <b>Nuevos pisos encontrados</b>",
             "",
-            f"📊 Total: <b>{len(listings)}</b> anuncios",
-            f"📅 {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Se han encontrado <b>{len(listings)}</b> nuevos anuncios.",
+            "",
         ]
-        
-        if profile_name:
-            lines.append(f"🔍 Perfil: {profile_name}")
-        
+
         # Resumen por portal
         portals = {}
         for l in listings:
             portals[l.portal] = portals.get(l.portal, 0) + 1
-        
+
         if portals:
-            lines.append("")
-            lines.append("📱 Por portal:")
+            lines.append("📱 <b>Por portal:</b>")
             for portal, count in sorted(portals.items(), key=lambda x: -x[1]):
-                lines.append(f"  • {portal}: {count}")
-        
+                lines.append(f"  • {portal.title()}: {count}")
+            lines.append("")
+
         # Rango de precios
         prices = [l.price for l in listings if l.price]
         if prices:
-            lines.append("")
             lines.append(f"💰 Precios: {format_price(min(prices))} - {format_price(max(prices))}")
-        
-        return "\n".join(lines)
-    
-    def _build_listing_message(self, listing: Listing) -> str:
-        """Construye el mensaje para un anuncio individual."""
-        lines = []
-        
-        # Título
-        title = truncate_text(listing.title or "Sin título", 100)
-        lines.append(f"🏢 <b>{self._escape_html(title)}</b>")
-        
-        # Precio
-        if listing.price:
-            lines.append(f"💰 <b>{format_price(listing.price)}</b>")
+            lines.append("")
+
+        # Link al dashboard
+        if dashboard_url:
+            lines.append(f"👉 <a href=\"{dashboard_url}/listings\">Ver todos en el Dashboard</a>")
         else:
-            lines.append("💰 Consultar precio")
-        
-        # Ubicación
-        location = listing.get_location_string()
-        lines.append(f"📍 {self._escape_html(location)}")
-        
-        # Características principales
-        features = []
-        if listing.bedrooms:
-            features.append(f"🛏 {listing.bedrooms} hab")
-        if listing.bathrooms:
-            features.append(f"🚿 {listing.bathrooms} baños")
-        if listing.surface:
-            features.append(f"📐 {listing.surface} m²")
-        if listing.floor:
-            features.append(f"🏢 Planta {listing.floor}")
-        
-        if features:
-            lines.append(" | ".join(features))
-        
-        # Extras
-        extras = []
-        if listing.has_elevator:
-            extras.append("Ascensor")
-        if listing.has_parking:
-            extras.append("Garaje")
-        if listing.has_pool:
-            extras.append("Piscina")
-        if listing.has_terrace:
-            extras.append("Terraza")
-        if listing.has_ac:
-            extras.append("A/A")
-        if listing.has_storage:
-            extras.append("Trastero")
-        
-        if extras:
-            lines.append(f"✨ {', '.join(extras)}")
-        
-        # Descripción breve
-        if listing.description:
-            desc = truncate_text(listing.description, 150)
-            lines.append(f"\n📝 {self._escape_html(desc)}")
-        
-        # Portal y link
+            lines.append("📋 Revisa el dashboard para más detalles")
+
         lines.append("")
-        lines.append(f"🔗 <a href=\"{listing.url}\">Ver en {listing.portal}</a>")
-        
+        lines.append(f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+
         return "\n".join(lines)
     
+    def send_single_listing(self, listing: Listing, test_mode: bool = False) -> bool:
+        """
+        Envía una notificación de un único anuncio.
+
+        Args:
+            listing: Anuncio a notificar
+            test_mode: Modo de prueba
+
+        Returns:
+            True si se envió correctamente
+        """
+        return self.send_notification([listing], test_mode=test_mode)
+
     def _escape_html(self, text: str) -> str:
         """Escapa caracteres especiales de HTML."""
         if not text:
