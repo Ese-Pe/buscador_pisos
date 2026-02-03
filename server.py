@@ -37,62 +37,74 @@ bot_status = {
 @app.route('/')
 def dashboard():
     """Dashboard principal."""
-    from database import DatabaseManager
-    db = DatabaseManager()
+    try:
+        from database import DatabaseManager
+        db = DatabaseManager()
 
-    stats = db.get_stats()
-    recent_listings = db.search_listings(limit=10)
+        stats = db.get_stats()
+        recent_listings = db.search_listings(limit=10)
 
-    # Convert listings to dicts for template
-    recent = [l.to_dict() for l in recent_listings]
+        # Convert listings to dicts for template
+        recent = [l.to_dict() for l in recent_listings]
 
-    return render_template('dashboard.html',
-        active_page='dashboard',
-        bot_status=bot_status['status'],
-        stats=stats,
-        recent_listings=recent
-    )
+        return render_template('dashboard.html',
+            active_page='dashboard',
+            bot_status=bot_status['status'],
+            stats=stats,
+            recent_listings=recent
+        )
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Dashboard error: {error_details}")
+        return f"<h1>Dashboard Error</h1><pre>{error_details}</pre>", 500
 
 
 @app.route('/listings')
 def listings():
     """Página de listados con filtros."""
-    from database import DatabaseManager
-    db = DatabaseManager()
+    try:
+        from database import DatabaseManager
+        db = DatabaseManager()
 
-    # Get filter parameters
-    filters = {
-        'portal': request.args.get('portal'),
-        'city': request.args.get('city'),
-        'max_price': request.args.get('max_price', type=int),
-        'min_surface': request.args.get('min_surface', type=int),
-        'min_bedrooms': request.args.get('min_bedrooms', type=int),
-    }
+        # Get filter parameters
+        filters = {
+            'portal': request.args.get('portal'),
+            'city': request.args.get('city'),
+            'max_price': request.args.get('max_price', type=int),
+            'min_surface': request.args.get('min_surface', type=int),
+            'min_bedrooms': request.args.get('min_bedrooms', type=int),
+        }
 
-    # Search listings
-    results = db.search_listings(
-        portal=filters['portal'],
-        city=filters['city'],
-        max_price=filters['max_price'],
-        min_surface=filters['min_surface'],
-        min_bedrooms=filters['min_bedrooms'],
-        limit=200
-    )
+        # Search listings
+        results = db.search_listings(
+            portal=filters['portal'],
+            city=filters['city'],
+            max_price=filters['max_price'],
+            min_surface=filters['min_surface'],
+            min_bedrooms=filters['min_bedrooms'],
+            limit=200
+        )
 
-    # Convert to dicts
-    listings_data = [l.to_dict() for l in results]
+        # Convert to dicts
+        listings_data = [l.to_dict() for l in results]
 
-    # Get unique portals for filter dropdown
-    stats = db.get_stats()
-    portals = list(stats.get('by_portal', {}).keys())
+        # Get unique portals for filter dropdown
+        stats = db.get_stats()
+        portals = list(stats.get('by_portal', {}).keys())
 
-    return render_template('listings.html',
-        active_page='listings',
-        bot_status=bot_status['status'],
-        listings=listings_data,
-        portals=portals,
-        filters=filters
-    )
+        return render_template('listings.html',
+            active_page='listings',
+            bot_status=bot_status['status'],
+            listings=listings_data,
+            portals=portals,
+            filters=filters
+        )
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Listings error: {error_details}")
+        return f"<h1>Listings Error</h1><pre>{error_details}</pre>", 500
 
 
 @app.route('/history')
@@ -129,6 +141,51 @@ def history():
 def health():
     """Health check endpoint."""
     return "OK", 200
+
+
+@app.route('/debug')
+def debug():
+    """Debug endpoint to test components."""
+    results = {
+        "status": "ok",
+        "checks": {}
+    }
+
+    # Check templates
+    try:
+        import os
+        template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+        results["checks"]["templates_dir"] = os.path.exists(template_dir)
+        results["checks"]["templates"] = os.listdir(template_dir) if os.path.exists(template_dir) else []
+    except Exception as e:
+        results["checks"]["templates_error"] = str(e)
+
+    # Check static
+    try:
+        static_dir = os.path.join(os.path.dirname(__file__), 'static')
+        results["checks"]["static_dir"] = os.path.exists(static_dir)
+        results["checks"]["static"] = os.listdir(static_dir) if os.path.exists(static_dir) else []
+    except Exception as e:
+        results["checks"]["static_error"] = str(e)
+
+    # Check database
+    try:
+        from database import DatabaseManager
+        db = DatabaseManager()
+        results["checks"]["database"] = "connected"
+        results["checks"]["db_path"] = str(db.db_path)
+    except Exception as e:
+        results["checks"]["database_error"] = str(e)
+
+    # Check data directory
+    try:
+        data_dir = os.path.join(os.path.dirname(__file__), 'data')
+        results["checks"]["data_dir"] = os.path.exists(data_dir)
+        results["checks"]["data_files"] = os.listdir(data_dir) if os.path.exists(data_dir) else []
+    except Exception as e:
+        results["checks"]["data_error"] = str(e)
+
+    return jsonify(results)
 
 
 @app.route('/status')
