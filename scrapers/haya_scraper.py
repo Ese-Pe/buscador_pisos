@@ -49,9 +49,6 @@ class HayaScraper(SeleniumBaseScraper):
                 "button[data-action='accept']",
                 "[class*='cookie'] button",
                 "[id*='cookie'] button",
-                "button:contains('Aceptar')",
-                "button:contains('Acepto')",
-                "button:contains('Accept')",
             ]
 
             for selector in cookie_selectors:
