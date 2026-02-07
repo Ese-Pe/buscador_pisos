@@ -537,12 +537,23 @@ class SeleniumBaseScraper(BaseScraper):
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
-            options.add_argument(f'--user-agent={random.choice(self.user_agents)}')
+
+            # Anti-detection: Use realistic user agent
+            user_agent = random.choice(self.user_agents)
+            options.add_argument(f'--user-agent={user_agent}')
             options.add_argument('--window-size=1920,1080')
+
+            # Anti-detection: Disable automation flags
             options.add_argument('--disable-blink-features=AutomationControlled')
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            options.add_experimental_option('useAutomationExtension', False)
+
             options.add_argument('--disable-extensions')
             options.add_argument('--disable-infobars')
             options.add_argument('--remote-debugging-port=9222')
+
+            # Additional anti-detection options
+            options.add_argument('--lang=es-ES')
 
             # Additional options for stability on Linux servers
             if platform.system() == 'Linux':
@@ -627,6 +638,28 @@ class SeleniumBaseScraper(BaseScraper):
                 raise RuntimeError("No se pudo inicializar Selenium WebDriver - Chromium no disponible")
 
             self._driver.implicitly_wait(10)
+
+            # Anti-detection: Execute CDP commands to mask automation
+            try:
+                self._driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+                    'source': '''
+                        Object.defineProperty(navigator, 'webdriver', {
+                            get: () => undefined
+                        });
+                        Object.defineProperty(navigator, 'plugins', {
+                            get: () => [1, 2, 3, 4, 5]
+                        });
+                        Object.defineProperty(navigator, 'languages', {
+                            get: () => ['es-ES', 'es', 'en']
+                        });
+                        window.chrome = {
+                            runtime: {}
+                        };
+                    '''
+                })
+            except Exception as e:
+                self.logger.debug(f"CDP command failed (non-critical): {e}")
+
             self.logger.info("✅ Selenium WebDriver inicializado correctamente")
 
         return self._driver
