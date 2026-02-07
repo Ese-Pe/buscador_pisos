@@ -7,11 +7,22 @@
     <div class="page-header">
         <h1>All Listings</h1>
         <span class="listing-count">{{ listings|length }} results</span>
+        {% if filters.profile %}
+        <span class="profile-badge">{{ filters.profile|title }}</span>
+        {% endif %}
     </div>
 
     <!-- Filters -->
     <div class="filters-bar">
         <form method="GET" action="/listings" class="filters-form">
+            <div class="filter-group">
+                <label>Profile</label>
+                <select name="profile" onchange="this.form.submit()">
+                    <option value="">All Profiles</option>
+                    <option value="santi" {% if filters.profile == 'santi' %}selected{% endif %}>Santi</option>
+                    <option value="edu" {% if filters.profile == 'edu' %}selected{% endif %}>Edu</option>
+                </select>
+            </div>
             <div class="filter-group">
                 <label>Portal</label>
                 <select name="portal">
@@ -60,22 +71,22 @@
             <tbody>
                 {% for listing in listings %}
                 <tr class="{% if listing.is_new %}new-listing{% endif %}">
-                    <td class="title-cell">
+                    <td class="title-cell" data-label="Title">
                         <a href="{{ listing.url }}" target="_blank" class="listing-link">
                             {{ listing.title[:50] }}{% if listing.title|length > 50 %}...{% endif %}
                         </a>
                         {% if listing.is_new %}<span class="new-badge">NEW</span>{% endif %}
                     </td>
-                    <td><span class="portal-badge {{ listing.portal }}">{{ listing.portal }}</span></td>
-                    <td>{{ listing.city or listing.zone or '-' }}</td>
-                    <td class="price-cell">
+                    <td data-label="Portal"><span class="portal-badge {{ listing.portal }}">{{ listing.portal }}</span></td>
+                    <td data-label="Location">{{ listing.city or listing.zone or '-' }}</td>
+                    <td class="price-cell" data-label="Price">
                         {% if listing.price %}{{ "{:,.0f}".format(listing.price).replace(",", ".") }}€{% else %}-{% endif %}
                     </td>
-                    <td>{% if listing.surface %}{{ listing.surface }} m²{% else %}-{% endif %}</td>
-                    <td>{% if listing.bedrooms %}{{ listing.bedrooms }}{% else %}-{% endif %}</td>
-                    <td class="date-cell">{{ listing.first_seen[:10] if listing.first_seen else '-' }}</td>
-                    <td>
-                        <a href="{{ listing.url }}" target="_blank" class="btn btn-small">View</a>
+                    <td data-label="Surface">{% if listing.surface %}{{ listing.surface }} m²{% else %}-{% endif %}</td>
+                    <td data-label="Rooms">{% if listing.bedrooms %}{{ listing.bedrooms }}{% else %}-{% endif %}</td>
+                    <td class="date-cell" data-label="Date">{{ listing.first_seen[:10] if listing.first_seen else '-' }}</td>
+                    <td data-label="">
+                        <a href="{{ listing.url }}" target="_blank" class="btn btn-small btn-primary">View</a>
                     </td>
                 </tr>
                 {% else %}

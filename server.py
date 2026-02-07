@@ -65,16 +65,50 @@ def listings():
     """Página de listados con filtros."""
     try:
         from database import DatabaseManager
+        from utils import load_config
         db = DatabaseManager()
 
         # Get filter parameters
+        profile = request.args.get('profile')
         filters = {
+            'profile': profile,
             'portal': request.args.get('portal'),
             'city': request.args.get('city'),
             'max_price': request.args.get('max_price', type=int),
             'min_surface': request.args.get('min_surface', type=int),
             'min_bedrooms': request.args.get('min_bedrooms', type=int),
         }
+
+        # Apply profile filters if selected
+        if profile:
+            try:
+                filters_config = load_config('config/filters.yaml')
+                profiles = filters_config.get('profiles', {})
+
+                # Map profile names to config keys
+                profile_map = {
+                    'santi': 'madrid_centro',    # Zaragoza Santi
+                    'edu': 'barcelona_eixample'   # Zaragoza Edu
+                }
+
+                config_key = profile_map.get(profile.lower())
+                if config_key and config_key in profiles:
+                    profile_config = profiles[config_key]
+
+                    # Apply profile filters (only if not manually overridden)
+                    if not filters['max_price']:
+                        price_config = profile_config.get('price', {})
+                        filters['max_price'] = price_config.get('max')
+
+                    if not filters['min_surface']:
+                        surface_config = profile_config.get('surface', {})
+                        filters['min_surface'] = surface_config.get('min')
+
+                    if not filters['min_bedrooms']:
+                        bedrooms_config = profile_config.get('bedrooms', {})
+                        filters['min_bedrooms'] = bedrooms_config.get('min')
+            except Exception as e:
+                print(f"Error loading profile filters: {e}")
 
         # Search listings
         results = db.search_listings(

@@ -14,15 +14,16 @@
             <span class="logo">🏠</span>
             <span class="brand-name">Flat Seeker</span>
         </div>
-        <div class="nav-links">
-            <a href="/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
-            <a href="/listings" class="nav-link {% if active_page == 'listings' %}active{% endif %}">Listings</a>
-            <a href="/history" class="nav-link {% if active_page == 'history' %}active{% endif %}">History</a>
-        </div>
         <div class="nav-actions">
             <span class="status-badge {% if bot_status == 'running' %}running{% elif bot_status == 'completed' %}completed{% else %}idle{% endif %}">
                 {{ bot_status|default('idle') }}
             </span>
+        </div>
+        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle menu">☰</button>
+        <div class="nav-links" id="nav-links">
+            <a href="/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="/listings" class="nav-link {% if active_page == 'listings' %}active{% endif %}">Listings</a>
+            <a href="/history" class="nav-link {% if active_page == 'history' %}active{% endif %}">History</a>
         </div>
     </nav>
 
@@ -35,6 +36,19 @@
     </footer>
 
     <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const navLinks = document.getElementById('nav-links');
+            navLinks.classList.toggle('mobile-open');
+        }
+
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('nav-links').classList.remove('mobile-open');
+            });
+        });
+
         // Auto-refresh status every 30 seconds
         setInterval(() => {
             fetch('/api/status')

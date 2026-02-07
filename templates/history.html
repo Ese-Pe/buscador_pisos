@@ -24,23 +24,23 @@
             <tbody>
                 {% for run in runs %}
                 <tr>
-                    <td class="date-cell">
+                    <td class="date-cell" data-label="Date/Time">
                         {{ run.start_time[:19] if run.start_time else '-' }}
                     </td>
-                    <td>
+                    <td data-label="Status">
                         <span class="status-pill {{ run.status }}">{{ run.status }}</span>
                     </td>
-                    <td>{{ run.total_listings_found or 0 }}</td>
-                    <td class="highlight">{{ run.new_listings or 0 }}</td>
-                    <td class="{% if run.errors > 0 %}error{% endif %}">{{ run.errors or 0 }}</td>
-                    <td>
+                    <td data-label="Total Found">{{ run.total_listings_found or 0 }}</td>
+                    <td class="highlight" data-label="New">{{ run.new_listings or 0 }}</td>
+                    <td class="{% if run.errors > 0 %}error{% endif %}" data-label="Errors">{{ run.errors or 0 }}</td>
+                    <td data-label="Duration">
                         {% if run.end_time and run.start_time %}
                             {{ run.duration_str or '-' }}
                         {% else %}
                             -
                         {% endif %}
                     </td>
-                    <td class="portals-cell">
+                    <td class="portals-cell" data-label="Portals">
                         {% if run.portal_stats %}
                             {% for portal, stats in run.portal_stats.items() %}
                             <span class="portal-mini {{ portal }}">{{ portal }}: {{ stats.found }}</span>
