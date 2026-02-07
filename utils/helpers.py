@@ -327,49 +327,74 @@ def parse_date(date_str: str) -> Optional[datetime]:
     return None
 
 
-def matches_filter(listing: Dict[str, Any], filters: Dict[str, Any]) -> bool:
+def matches_filter(listing: Dict[str, Any], filters: Dict[str, Any], strict: bool = False) -> bool:
     """
     Comprueba si un anuncio cumple con los filtros especificados.
-    
+
     Args:
         listing: Datos del anuncio
         filters: Filtros a aplicar
-    
+        strict: Si True, rechaza anuncios sin datos cuando hay filtros activos
+
     Returns:
         True si cumple todos los filtros, False en caso contrario
     """
     # Filtro de precio
-    if 'price' in filters and listing.get('price'):
-        price = listing['price']
-        if filters['price'].get('min') and price < filters['price']['min']:
-            return False
-        if filters['price'].get('max') and price > filters['price']['max']:
-            return False
-    
+    price_filter = filters.get('price', {})
+    if price_filter.get('min') or price_filter.get('max'):
+        price = listing.get('price')
+        if price is None:
+            # No hay precio - en modo estricto, rechazar si hay filtro de precio
+            if strict:
+                return False
+        else:
+            if price_filter.get('min') and price < price_filter['min']:
+                return False
+            if price_filter.get('max') and price > price_filter['max']:
+                return False
+
     # Filtro de superficie
-    if 'surface' in filters and listing.get('surface'):
-        surface = listing['surface']
-        if filters['surface'].get('min') and surface < filters['surface']['min']:
-            return False
-        if filters['surface'].get('max') and surface > filters['surface']['max']:
-            return False
-    
+    surface_filter = filters.get('surface', {})
+    if surface_filter.get('min') or surface_filter.get('max'):
+        surface = listing.get('surface')
+        if surface is None:
+            # No hay superficie - en modo estricto, rechazar si hay filtro
+            if strict:
+                return False
+        else:
+            if surface_filter.get('min') and surface < surface_filter['min']:
+                return False
+            if surface_filter.get('max') and surface > surface_filter['max']:
+                return False
+
     # Filtro de habitaciones
-    if 'bedrooms' in filters and listing.get('bedrooms'):
-        bedrooms = listing['bedrooms']
-        if filters['bedrooms'].get('min') and bedrooms < filters['bedrooms']['min']:
-            return False
-        if filters['bedrooms'].get('max') and bedrooms > filters['bedrooms']['max']:
-            return False
-    
+    bedrooms_filter = filters.get('bedrooms', {})
+    if bedrooms_filter.get('min') or bedrooms_filter.get('max'):
+        bedrooms = listing.get('bedrooms')
+        if bedrooms is None:
+            # No hay habitaciones - en modo estricto, rechazar si hay filtro
+            if strict:
+                return False
+        else:
+            if bedrooms_filter.get('min') and bedrooms < bedrooms_filter['min']:
+                return False
+            if bedrooms_filter.get('max') and bedrooms > bedrooms_filter['max']:
+                return False
+
     # Filtro de baños
-    if 'bathrooms' in filters and listing.get('bathrooms'):
-        bathrooms = listing['bathrooms']
-        if filters['bathrooms'].get('min') and bathrooms < filters['bathrooms']['min']:
-            return False
-        if filters['bathrooms'].get('max') and bathrooms > filters['bathrooms']['max']:
-            return False
-    
+    bathrooms_filter = filters.get('bathrooms', {})
+    if bathrooms_filter.get('min') or bathrooms_filter.get('max'):
+        bathrooms = listing.get('bathrooms')
+        if bathrooms is None:
+            # No hay baños - en modo estricto, rechazar si hay filtro
+            if strict:
+                return False
+        else:
+            if bathrooms_filter.get('min') and bathrooms < bathrooms_filter['min']:
+                return False
+            if bathrooms_filter.get('max') and bathrooms > bathrooms_filter['max']:
+                return False
+
     return True
 
 

@@ -232,6 +232,8 @@ class AltamiraScraper(SeleniumBaseScraper):
                         title = link.get_text(strip=True)
                         if title and len(title) > 5:
                             listing['title'] = title
+                        # Try to find price/surface in parent container
+                        self._extract_data_from_context(link, listing)
                         listings.append(listing)
 
         self.logger.info(f"Altamira: Total listings extracted: {len(listings)}")
@@ -318,6 +320,43 @@ class AltamiraScraper(SeleniumBaseScraper):
                 listing['images'] = [img_src]
 
         return listing
+
+    def _extract_data_from_context(self, link, listing: Dict[str, Any]):
+        """Extract price/surface/bedrooms from the link's parent container."""
+        parent = link.parent
+        for _ in range(5):
+            if parent is None:
+                break
+            parent_text = parent.get_text(separator=' ', strip=True)
+
+            # Look for price pattern
+            if not listing.get('price'):
+                price_match = re.search(r'(\d{1,3}(?:[.,]\d{3})*)\s*€', parent_text)
+                if price_match:
+                    listing['price'] = price_match.group(0)
+
+            # Look for surface pattern
+            if not listing.get('surface'):
+                surface_match = re.search(r'(\d+)\s*m[²2]', parent_text)
+                if surface_match:
+                    listing['surface'] = surface_match.group(0)
+
+            # Look for bedrooms pattern
+            if not listing.get('bedrooms'):
+                bedrooms_match = re.search(r'(\d+)\s*(?:hab|dormitorio|habitacion)', parent_text, re.IGNORECASE)
+                if bedrooms_match:
+                    listing['bedrooms'] = bedrooms_match.group(0)
+
+            # Look for bathrooms pattern
+            if not listing.get('bathrooms'):
+                bathrooms_match = re.search(r'(\d+)\s*(?:baño|aseo)', parent_text, re.IGNORECASE)
+                if bathrooms_match:
+                    listing['bathrooms'] = bathrooms_match.group(0)
+
+            if listing.get('price') and listing.get('surface'):
+                break
+
+            parent = parent.parent
 
     def parse_listing_detail(self, html: str, url: str) -> Dict[str, Any]:
         """Parsea la página de detalle."""
