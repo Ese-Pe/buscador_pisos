@@ -74,6 +74,7 @@ def listings():
             'profile': profile,
             'portal': request.args.get('portal'),
             'city': request.args.get('city'),
+            'min_price': request.args.get('min_price', type=int),
             'max_price': request.args.get('max_price', type=int),
             'min_surface': request.args.get('min_surface', type=int),
             'min_bedrooms': request.args.get('min_bedrooms', type=int),
@@ -114,6 +115,7 @@ def listings():
         results = db.search_listings(
             portal=filters['portal'],
             city=filters['city'],
+            min_price=filters['min_price'],
             max_price=filters['max_price'],
             min_surface=filters['min_surface'],
             min_bedrooms=filters['min_bedrooms'],

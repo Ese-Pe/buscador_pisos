@@ -33,6 +33,10 @@
                 </select>
             </div>
             <div class="filter-group">
+                <label>Min Price</label>
+                <input type="number" name="min_price" placeholder="e.g. 50000" value="{{ filters.min_price or '' }}">
+            </div>
+            <div class="filter-group">
                 <label>Max Price</label>
                 <input type="number" name="max_price" placeholder="e.g. 300000" value="{{ filters.max_price or '' }}">
             </div>
@@ -58,33 +62,33 @@
         <table class="listings-table">
             <thead>
                 <tr>
-                    <th>Title</th>
-                    <th>Portal</th>
-                    <th>Location</th>
-                    <th>Price</th>
-                    <th>Surface</th>
-                    <th>Rooms</th>
-                    <th>Date</th>
+                    <th class="sortable" data-sort="title">Title <span class="sort-icon"></span></th>
+                    <th class="sortable" data-sort="portal">Portal <span class="sort-icon"></span></th>
+                    <th class="sortable" data-sort="location">Location <span class="sort-icon"></span></th>
+                    <th class="sortable" data-sort="price">Price <span class="sort-icon"></span></th>
+                    <th class="sortable" data-sort="surface">Surface <span class="sort-icon"></span></th>
+                    <th class="sortable" data-sort="rooms">Rooms <span class="sort-icon"></span></th>
+                    <th class="sortable" data-sort="date">Date <span class="sort-icon"></span></th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for listing in listings %}
                 <tr class="{% if listing.is_new %}new-listing{% endif %}">
-                    <td class="title-cell" data-label="Title">
+                    <td class="title-cell" data-label="Title" data-value="{{ listing.title or '' }}">
                         <a href="{{ listing.url }}" target="_blank" class="listing-link">
                             {{ listing.title[:50] }}{% if listing.title|length > 50 %}...{% endif %}
                         </a>
                         {% if listing.is_new %}<span class="new-badge">NEW</span>{% endif %}
                     </td>
-                    <td data-label="Portal"><span class="portal-badge {{ listing.portal }}">{{ listing.portal }}</span></td>
-                    <td data-label="Location">{{ listing.city or listing.zone or '-' }}</td>
-                    <td class="price-cell" data-label="Price">
+                    <td data-label="Portal" data-value="{{ listing.portal }}"><span class="portal-badge {{ listing.portal }}">{{ listing.portal }}</span></td>
+                    <td data-label="Location" data-value="{{ listing.city or listing.zone or '' }}">{{ listing.city or listing.zone or '-' }}</td>
+                    <td class="price-cell" data-label="Price" data-value="{{ listing.price or 0 }}">
                         {% if listing.price %}{{ "{:,.0f}".format(listing.price).replace(",", ".") }}€{% else %}-{% endif %}
                     </td>
-                    <td data-label="Surface">{% if listing.surface %}{{ listing.surface }} m²{% else %}-{% endif %}</td>
-                    <td data-label="Rooms">{% if listing.bedrooms %}{{ listing.bedrooms }}{% else %}-{% endif %}</td>
-                    <td class="date-cell" data-label="Date">{{ listing.first_seen[:10] if listing.first_seen else '-' }}</td>
+                    <td data-label="Surface" data-value="{{ listing.surface or 0 }}">{% if listing.surface %}{{ listing.surface }} m²{% else %}-{% endif %}</td>
+                    <td data-label="Rooms" data-value="{{ listing.bedrooms or 0 }}">{% if listing.bedrooms %}{{ listing.bedrooms }}{% else %}-{% endif %}</td>
+                    <td class="date-cell" data-label="Date" data-value="{{ listing.first_seen or '' }}">{{ listing.first_seen[:10] if listing.first_seen else '-' }}</td>
                     <td data-label="">
                         <a href="{{ listing.url }}" target="_blank" class="btn btn-small btn-primary">View</a>
                     </td>
@@ -98,4 +102,90 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Table sorting functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.querySelector('.listings-table');
+    if (!table) return;
+
+    const headers = table.querySelectorAll('th.sortable');
+    const tbody = table.querySelector('tbody');
+    let currentSort = { column: null, direction: 'asc' };
+
+    // Column index mapping
+    const columnMap = {
+        'title': 0,
+        'portal': 1,
+        'location': 2,
+        'price': 3,
+        'surface': 4,
+        'rooms': 5,
+        'date': 6
+    };
+
+    headers.forEach(header => {
+        header.addEventListener('click', function() {
+            const sortKey = this.dataset.sort;
+            const columnIndex = columnMap[sortKey];
+
+            // Toggle direction if same column
+            if (currentSort.column === sortKey) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = sortKey;
+                currentSort.direction = 'asc';
+            }
+
+            // Update header icons
+            headers.forEach(h => {
+                h.classList.remove('sort-asc', 'sort-desc');
+            });
+            this.classList.add('sort-' + currentSort.direction);
+
+            // Get all rows
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Sort rows
+            rows.sort((a, b) => {
+                const aCell = a.children[columnIndex];
+                const bCell = b.children[columnIndex];
+
+                if (!aCell || !bCell) return 0;
+
+                let aVal = aCell.dataset.value || aCell.textContent.trim();
+                let bVal = bCell.dataset.value || bCell.textContent.trim();
+
+                // Numeric sorting for price, surface, rooms
+                if (['price', 'surface', 'rooms'].includes(sortKey)) {
+                    aVal = parseFloat(aVal) || 0;
+                    bVal = parseFloat(bVal) || 0;
+                    return currentSort.direction === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+
+                // Date sorting
+                if (sortKey === 'date') {
+                    aVal = aVal || '0000-00-00';
+                    bVal = bVal || '0000-00-00';
+                    return currentSort.direction === 'asc'
+                        ? aVal.localeCompare(bVal)
+                        : bVal.localeCompare(aVal);
+                }
+
+                // String sorting (title, portal, location)
+                aVal = aVal.toLowerCase();
+                bVal = bVal.toLowerCase();
+                return currentSort.direction === 'asc'
+                    ? aVal.localeCompare(bVal)
+                    : bVal.localeCompare(aVal);
+            });
+
+            // Re-append rows in sorted order
+            rows.forEach(row => tbody.appendChild(row));
+        });
+    });
+});
+</script>
 {% endblock %}
