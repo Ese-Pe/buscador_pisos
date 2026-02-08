@@ -116,7 +116,7 @@ portals:
     enabled: true
     priority: 1
   idealista:
-    enabled: true  # Selenium with Docker
+    enabled: false  # Disabled - blocked by DataDome captcha, wastes memory
     priority: 1
   fotocasa:
     enabled: true  # Selenium with Docker
@@ -125,7 +125,7 @@ portals:
     enabled: true  # Selenium with Docker
     priority: 1
   habitaclia:
-    enabled: true  # Selenium - Popular in Catalonia and other regions
+    enabled: false  # Disabled - blocked by captcha, wastes memory
     priority: 1
   bienici:
     enabled: false  # French portal

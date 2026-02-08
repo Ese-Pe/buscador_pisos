@@ -286,7 +286,7 @@ def run_bot(test_mode=False):
     try:
         from main import RealEstateBot
         bot = RealEstateBot()
-        stats = bot.run(test_mode=test_mode, max_pages=25)
+        stats = bot.run(test_mode=test_mode, max_pages=3)  # Reduced to save memory on free tier
 
         bot_status["last_run_stats"] = {
             "total_found": stats.total_listings_found,

@@ -15,6 +15,7 @@ Uso:
 """
 
 import argparse
+import gc
 import sys
 import threading
 import time
@@ -130,12 +131,20 @@ class RealEstateBot:
         else:
             self.logger.info("\n✓ No hay anuncios nuevos")
         
+        # Cleanup shared Selenium driver to free memory
+        try:
+            from scrapers.base_scraper import SharedDriverManager
+            SharedDriverManager.quit()
+            gc.collect()
+        except Exception as e:
+            self.logger.debug(f"Driver cleanup: {e}")
+
         # Finalizar
         self.run_stats.complete(success=True)
         self.db.save_run_stats(self.run_stats)
         self.db.cleanup_old_listings(self.config.get('database', {}).get('retention_days', 90))
         self._print_summary()
-        
+
         return self.run_stats
     
     def _scrape_portal(self, portal_name: str, profile: Dict[str, Any], max_pages: int = 10) -> List[Listing]:
@@ -180,10 +189,13 @@ class RealEstateBot:
         except Exception as e:
             self.logger.error(f"Error scrapeando {portal_name}: {e}")
             error_count += 1
-        
+
+        # Force garbage collection to free memory (important for Selenium scrapers)
+        gc.collect()
+
         self.run_stats.add_portal_stats(portal_name, found_count, len(new_listings), error_count)
         self.logger.info(f"  {portal_name}: {found_count} encontrados, {len(new_listings)} nuevos")
-        
+
         return new_listings
     
     def _send_notifications(self, listings: List[Listing]):

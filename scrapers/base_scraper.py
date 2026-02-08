@@ -4,6 +4,7 @@ Define la interfaz común y funcionalidades compartidas.
 """
 
 import random
+import threading
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -26,6 +27,158 @@ from utils import (
     normalize_url,
     random_delay,
 )
+
+
+# =============================================================================
+# SHARED SELENIUM DRIVER MANAGER
+# =============================================================================
+# Singleton to share a single Chrome instance across all Selenium scrapers
+# This dramatically reduces memory usage on constrained environments
+
+class SharedDriverManager:
+    """
+    Singleton manager for sharing a single Selenium WebDriver across all scrapers.
+    This reduces memory usage from ~200MB per driver to ~200MB total.
+    """
+    _instance = None
+    _lock = threading.Lock()
+    _driver = None
+    _user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    ]
+
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+        return cls._instance
+
+    @classmethod
+    def get_driver(cls, user_agents: List[str] = None):
+        """Get or create the shared WebDriver."""
+        if user_agents:
+            cls._user_agents = user_agents
+
+        if cls._driver is None:
+            with cls._lock:
+                if cls._driver is None:
+                    cls._driver = cls._create_driver()
+        return cls._driver
+
+    @classmethod
+    def _create_driver(cls):
+        """Create a new WebDriver instance."""
+        import os
+        import platform
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.chrome.service import Service
+
+        logger = get_logger("SharedDriver")
+        logger.info("🚀 Creating shared Selenium WebDriver...")
+
+        options = Options()
+        options.add_argument('--headless=new')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+
+        # Memory optimization for constrained environments
+        options.add_argument('--js-flags=--max-old-space-size=128')
+        options.add_argument('--disable-software-rasterizer')
+        options.add_argument('--disable-background-networking')
+        options.add_argument('--disable-default-apps')
+        options.add_argument('--disable-sync')
+        options.add_argument('--disable-translate')
+        options.add_argument('--metrics-recording-only')
+        options.add_argument('--mute-audio')
+        options.add_argument('--no-first-run')
+        options.add_argument('--safebrowsing-disable-auto-update')
+
+        # Anti-detection
+        user_agent = random.choice(cls._user_agents)
+        options.add_argument(f'--user-agent={user_agent}')
+        options.add_argument('--window-size=1920,1080')
+        options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        options.add_argument('--disable-extensions')
+        options.add_argument('--disable-infobars')
+        options.add_argument('--lang=es-ES')
+
+        # Linux server options
+        if platform.system() == 'Linux':
+            options.add_argument('--single-process')
+
+            chrome_bin = os.environ.get('CHROME_BIN')
+            if chrome_bin and os.path.exists(chrome_bin):
+                options.binary_location = chrome_bin
+                logger.info(f"Using Chromium from CHROME_BIN: {chrome_bin}")
+            else:
+                for path in ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome']:
+                    if os.path.exists(path):
+                        options.binary_location = path
+                        logger.info(f"Using Chromium at: {path}")
+                        break
+
+        # Initialize driver
+        driver = None
+        chromedriver_env = os.environ.get('CHROMEDRIVER_PATH')
+        if chromedriver_env and os.path.exists(chromedriver_env):
+            service = Service(chromedriver_env)
+            driver = webdriver.Chrome(service=service, options=options)
+            logger.info(f"Using chromedriver from CHROMEDRIVER_PATH: {chromedriver_env}")
+        else:
+            for path in ['/usr/bin/chromedriver', '/usr/lib/chromium/chromedriver']:
+                if os.path.exists(path):
+                    service = Service(path)
+                    driver = webdriver.Chrome(service=service, options=options)
+                    logger.info(f"Using chromedriver at: {path}")
+                    break
+
+            if driver is None:
+                try:
+                    driver = webdriver.Chrome(options=options)
+                except Exception:
+                    from webdriver_manager.chrome import ChromeDriverManager
+                    service = Service(ChromeDriverManager().install())
+                    driver = webdriver.Chrome(service=service, options=options)
+
+        if driver is None:
+            raise RuntimeError("Failed to initialize Selenium WebDriver")
+
+        driver.implicitly_wait(10)
+
+        # Anti-detection CDP commands
+        try:
+            driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+                'source': '''
+                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                    Object.defineProperty(navigator, 'languages', { get: () => ['es-ES', 'es', 'en'] });
+                    window.chrome = { runtime: {} };
+                '''
+            })
+        except Exception:
+            pass
+
+        logger.info("✅ Shared Selenium WebDriver initialized successfully")
+        return driver
+
+    @classmethod
+    def quit(cls):
+        """Quit the shared driver and free resources."""
+        if cls._driver is not None:
+            with cls._lock:
+                if cls._driver is not None:
+                    try:
+                        cls._driver.quit()
+                    except Exception:
+                        pass
+                    cls._driver = None
+                    logger = get_logger("SharedDriver")
+                    logger.info("🛑 Shared Selenium WebDriver closed")
 
 
 class BaseScraper(ABC, LoggerMixin):
@@ -509,193 +662,57 @@ class SeleniumBaseScraper(BaseScraper):
     """
     Clase base para scrapers que requieren Selenium.
     Extiende BaseScraper con soporte para JavaScript.
+
+    Uses SharedDriverManager to share a single Chrome instance across all
+    Selenium scrapers, dramatically reducing memory usage.
     """
-    
+
     requires_selenium = True
-    
+
     def __init__(self, config: Dict[str, Any] = None):
         super().__init__(config)
-        self._driver = None
-    
+        self._owns_driver = False  # We don't own the driver, SharedDriverManager does
+
     @property
     def driver(self):
         """
-        Obtiene o crea una instancia de Selenium WebDriver.
+        Get the shared WebDriver instance.
 
         Returns:
-            WebDriver configurado
+            WebDriver configurado (shared across all Selenium scrapers)
         """
-        if self._driver is None:
-            import os
-            import platform
-            from selenium import webdriver
-            from selenium.webdriver.chrome.options import Options
-            from selenium.webdriver.chrome.service import Service
+        return SharedDriverManager.get_driver(self.user_agents)
 
-            options = Options()
-            options.add_argument('--headless=new')  # New headless mode
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument('--disable-gpu')
-
-            # Anti-detection: Use realistic user agent
-            user_agent = random.choice(self.user_agents)
-            options.add_argument(f'--user-agent={user_agent}')
-            options.add_argument('--window-size=1920,1080')
-
-            # Anti-detection: Disable automation flags
-            options.add_argument('--disable-blink-features=AutomationControlled')
-            options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            options.add_experimental_option('useAutomationExtension', False)
-
-            options.add_argument('--disable-extensions')
-            options.add_argument('--disable-infobars')
-            options.add_argument('--remote-debugging-port=9222')
-
-            # Additional anti-detection options
-            options.add_argument('--lang=es-ES')
-
-            # Additional options for stability on Linux servers
-            if platform.system() == 'Linux':
-                options.add_argument('--disable-software-rasterizer')
-                options.add_argument('--single-process')
-
-                # Check for environment variable first (Docker)
-                chrome_bin = os.environ.get('CHROME_BIN')
-                if chrome_bin and os.path.exists(chrome_bin):
-                    options.binary_location = chrome_bin
-                    self.logger.info(f"Using Chromium from CHROME_BIN: {chrome_bin}")
-                else:
-                    # Try to find Chromium binary on Render/Linux
-                    chromium_paths = [
-                        '/usr/bin/chromium',
-                        '/usr/bin/chromium-browser',
-                        '/usr/bin/google-chrome',
-                        '/usr/bin/google-chrome-stable',
-                    ]
-                    for path in chromium_paths:
-                        if os.path.exists(path):
-                            options.binary_location = path
-                            self.logger.info(f"Using Chromium at: {path}")
-                            break
-
-            # Try different methods to initialize the driver
-            driver_initialized = False
-
-            # Method 1: Try system chromedriver
-            if not driver_initialized:
-                try:
-                    # Check for environment variable first (Docker)
-                    chromedriver_env = os.environ.get('CHROMEDRIVER_PATH')
-                    if chromedriver_env and os.path.exists(chromedriver_env):
-                        service = Service(chromedriver_env)
-                        self._driver = webdriver.Chrome(service=service, options=options)
-                        driver_initialized = True
-                        self.logger.info(f"Using chromedriver from CHROMEDRIVER_PATH: {chromedriver_env}")
-                    else:
-                        # Check for chromedriver in common Linux paths
-                        chromedriver_paths = [
-                            '/usr/bin/chromedriver',
-                            '/usr/lib/chromium/chromedriver',
-                            '/usr/lib/chromium-browser/chromedriver',
-                        ]
-                        for path in chromedriver_paths:
-                            if os.path.exists(path):
-                                service = Service(path)
-                                self._driver = webdriver.Chrome(service=service, options=options)
-                                driver_initialized = True
-                                self.logger.info(f"Using chromedriver at: {path}")
-                                break
-
-                    if not driver_initialized:
-                        self._driver = webdriver.Chrome(options=options)
-                        driver_initialized = True
-                except Exception as e:
-                    self.logger.warning(f"⚠️ System chromedriver failed: {e}")
-
-            # Method 2: Try webdriver-manager
-            if not driver_initialized:
-                try:
-                    from webdriver_manager.chrome import ChromeDriverManager
-                    from webdriver_manager.core.os_manager import ChromeType
-
-                    # Try Chromium driver first (for Render/Linux)
-                    try:
-                        service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
-                        self._driver = webdriver.Chrome(service=service, options=options)
-                        driver_initialized = True
-                    except Exception:
-                        # Fallback to Chrome driver
-                        service = Service(ChromeDriverManager().install())
-                        self._driver = webdriver.Chrome(service=service, options=options)
-                        driver_initialized = True
-                except Exception as e:
-                    self.logger.error(f"webdriver-manager failed: {e}")
-
-            if not driver_initialized:
-                self.logger.error("❌ SELENIUM FAILED: No se pudo inicializar WebDriver")
-                self.logger.error("   Verifique que Chromium está instalado en el servidor")
-                raise RuntimeError("No se pudo inicializar Selenium WebDriver - Chromium no disponible")
-
-            self._driver.implicitly_wait(10)
-
-            # Anti-detection: Execute CDP commands to mask automation
-            try:
-                self._driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-                    'source': '''
-                        Object.defineProperty(navigator, 'webdriver', {
-                            get: () => undefined
-                        });
-                        Object.defineProperty(navigator, 'plugins', {
-                            get: () => [1, 2, 3, 4, 5]
-                        });
-                        Object.defineProperty(navigator, 'languages', {
-                            get: () => ['es-ES', 'es', 'en']
-                        });
-                        window.chrome = {
-                            runtime: {}
-                        };
-                    '''
-                })
-            except Exception as e:
-                self.logger.debug(f"CDP command failed (non-critical): {e}")
-
-            self.logger.info("✅ Selenium WebDriver inicializado correctamente")
-
-        return self._driver
-    
     def _fetch_page(self, url: str) -> Optional[str]:
         """
         Obtiene el contenido HTML usando Selenium.
-        
+
         Args:
             url: URL a obtener
-        
+
         Returns:
             Contenido HTML o None si falla
         """
         if not self._can_fetch(url):
             self.logger.warning(f"URL bloqueada por robots.txt: {url}")
             return None
-        
+
         self._apply_delay()
-        
+
         try:
             self.driver.get(url)
-            
+
             # Esperar a que cargue el contenido dinámico
             time.sleep(2)
-            
+
             self._last_request_time = time.time()
             return self.driver.page_source
-            
+
         except Exception as e:
             self.logger.error(f"Error obteniendo {url} con Selenium: {e}")
             return None
-    
+
     def close(self):
-        """Cierra el WebDriver y la sesión HTTP."""
-        if self._driver:
-            self._driver.quit()
-            self._driver = None
+        """Close HTTP session. Does NOT close the shared WebDriver."""
+        # Don't close the shared driver - let SharedDriverManager handle it
         super().close()
