@@ -113,37 +113,38 @@ telegram:
 portals:
   # Agregadores principales - Portales con más tráfico y listados en España
   tucasa:
-    enabled: true
+    enabled: true  # Requests-based - works within 512MB limit
     priority: 1
   idealista:
-    enabled: false  # Disabled - blocked by DataDome captcha, wastes memory
+    enabled: false  # Disabled - blocked by DataDome captcha
     priority: 1
   fotocasa:
-    enabled: true  # Selenium with Docker
+    enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
     priority: 1
   pisos:
-    enabled: true  # Selenium with Docker
+    enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
     priority: 1
   habitaclia:
-    enabled: false  # Disabled - blocked by captcha, wastes memory
+    enabled: false  # Disabled - blocked by captcha
     priority: 1
   bienici:
     enabled: false  # French portal
     priority: 3
   yaencontre:
-    enabled: false  # Disabled temporarily - Selenium issues on Render
+    enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
     priority: 2
 
   # Portales bancarios (Selenium scrapers)
-  # Bank properties often have good prices below market value
+  # NOTE: All disabled due to 512MB memory limit on Render free tier
+  # Chrome alone uses ~300MB which exceeds the limit with Python/Flask
   altamira:
-    enabled: true  # Selenium - Santander bank properties
+    enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
     priority: 2
   haya:
-    enabled: true  # Selenium - CaixaBank/Bankia properties
+    enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
     priority: 2
   solvia:
-    enabled: true  # Selenium - Sabadell bank properties
+    enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
     priority: 2
 
   # Other bank portals (not yet implemented with dedicated Selenium scrapers)
