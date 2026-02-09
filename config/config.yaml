@@ -119,10 +119,10 @@ portals:
     enabled: false  # Disabled - blocked by DataDome captcha
     priority: 1
   fotocasa:
-    enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
+    enabled: true  # Selenium scraper
     priority: 1
   pisos:
-    enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
+    enabled: true  # Selenium scraper
     priority: 1
   habitaclia:
     enabled: false  # Disabled - blocked by captcha
@@ -131,7 +131,7 @@ portals:
     enabled: false  # French portal
     priority: 3
   yaencontre:
-    enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
+    enabled: true  # Selenium scraper
     priority: 2
 
   # Portales bancarios (Selenium scrapers)
