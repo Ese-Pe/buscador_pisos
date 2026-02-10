@@ -12,6 +12,7 @@ html5lib>=1.1
 # Selenium (para sitios con JavaScript)
 selenium>=4.15.0
 webdriver-manager>=4.0.0
+undetected-chromedriver>=3.5.0  # Bypass anti-bot detection (DataDome, etc.)
 
 # Base de datos
 # SQLite viene incluido en Python

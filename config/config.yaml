@@ -116,7 +116,7 @@ portals:
     enabled: true  # Requests-based - works within 512MB limit
     priority: 1
   idealista:
-    enabled: false  # Disabled - blocked by DataDome captcha
+    enabled: true  # Uses undetected-chromedriver to bypass DataDome
     priority: 1
   fotocasa:
     enabled: true  # Selenium scraper

@@ -3,9 +3,8 @@ Scraper para Idealista.com - Portal líder inmobiliario en España.
 https://www.idealista.com
 
 Requires Selenium due to anti-bot protection (JavaScript rendering).
-Idealista has very strong anti-bot protection - this scraper uses advanced
-evasion techniques including stealth mode, human-like behavior, and
-randomized delays.
+Idealista has very strong anti-bot protection (DataDome) - this scraper uses
+undetected-chromedriver to bypass detection.
 """
 
 import random
@@ -20,28 +19,93 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from .base_scraper import SeleniumBaseScraper
+from .base_scraper import BaseScraper
+from utils import get_logger
 
 
-class IdealistaScraper(SeleniumBaseScraper):
+class IdealistaScraper(BaseScraper):
     """
-    Scraper para Idealista.com using Selenium.
+    Scraper para Idealista.com using undetected-chromedriver.
 
     Idealista es el portal inmobiliario líder en España con más de 50M de visitas
     mensuales y más de 1.2M de anuncios.
 
-    Uses Selenium to bypass anti-bot protection and JavaScript rendering.
-    Includes advanced anti-detection measures.
+    Uses undetected-chromedriver to bypass DataDome anti-bot protection.
     """
+
+    requires_selenium = True
 
     def __init__(self, config: Dict[str, Any] = None):
         super().__init__(config)
         self.base_url = 'https://www.idealista.com'
         self.name = 'idealista'
         self._cookies_accepted = False
+        self._uc_driver = None
         # Longer delays for Idealista due to strong anti-bot
         self.min_delay = max(self.min_delay, 5)
         self.max_delay = max(self.max_delay, 10)
+
+    @property
+    def driver(self):
+        """Get or create the undetected-chromedriver instance."""
+        if self._uc_driver is None:
+            self._uc_driver = self._create_undetected_driver()
+        return self._uc_driver
+
+    def _create_undetected_driver(self):
+        """Create an undetected-chromedriver instance to bypass DataDome."""
+        import os
+        import platform
+
+        self.logger.info("🚀 Creating undetected-chromedriver for Idealista...")
+
+        try:
+            import undetected_chromedriver as uc
+
+            options = uc.ChromeOptions()
+            options.add_argument('--headless=new')
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--disable-gpu')
+
+            # Memory optimization
+            options.add_argument('--js-flags=--max-old-space-size=128')
+            options.add_argument('--disable-software-rasterizer')
+            options.add_argument('--disable-background-networking')
+            options.add_argument('--disable-default-apps')
+            options.add_argument('--disable-sync')
+            options.add_argument('--disable-translate')
+            options.add_argument('--mute-audio')
+            options.add_argument('--no-first-run')
+
+            # Window size and language
+            options.add_argument('--window-size=1920,1080')
+            options.add_argument('--lang=es-ES')
+
+            # Linux server options
+            if platform.system() == 'Linux':
+                options.add_argument('--single-process')
+                chrome_bin = os.environ.get('CHROME_BIN')
+                if chrome_bin and os.path.exists(chrome_bin):
+                    options.binary_location = chrome_bin
+
+            # Create undetected driver
+            driver = uc.Chrome(
+                options=options,
+                use_subprocess=True,
+                version_main=None  # Auto-detect Chrome version
+            )
+
+            driver.implicitly_wait(10)
+            self.logger.info("✅ Undetected-chromedriver initialized for Idealista")
+            return driver
+
+        except ImportError:
+            self.logger.error("❌ undetected-chromedriver not installed. Run: pip install undetected-chromedriver")
+            raise
+        except Exception as e:
+            self.logger.error(f"❌ Failed to create undetected-chromedriver: {e}")
+            raise
 
     def _handle_cookie_consent(self):
         """Try to accept cookie consent popup - Idealista uses didomi."""
@@ -519,3 +583,14 @@ class IdealistaScraper(SeleniumBaseScraper):
             return next_url
 
         return None
+
+    def close(self):
+        """Close the undetected-chromedriver and HTTP session."""
+        if self._uc_driver is not None:
+            try:
+                self._uc_driver.quit()
+                self.logger.info("🛑 Undetected-chromedriver closed for Idealista")
+            except Exception as e:
+                self.logger.debug(f"Error closing undetected-chromedriver: {e}")
+            self._uc_driver = None
+        super().close()
