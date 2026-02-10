@@ -135,8 +135,7 @@ portals:
     priority: 2
 
   # Portales bancarios (Selenium scrapers)
-  # NOTE: All disabled due to 512MB memory limit on Render free tier
-  # Chrome alone uses ~300MB which exceeds the limit with Python/Flask
+  # Bank properties often have good prices below market value
   altamira:
     enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
     priority: 2
@@ -144,7 +143,7 @@ portals:
     enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
     priority: 2
   solvia:
-    enabled: false  # Disabled - Selenium uses too much memory for 512MB limit
+    enabled: true  # Selenium - Sabadell bank properties
     priority: 2
 
   # Other bank portals (not yet implemented with dedicated Selenium scrapers)
