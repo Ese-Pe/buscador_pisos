@@ -185,12 +185,14 @@ class SolviaScraper(SeleniumBaseScraper):
         # Only accept URLs from solvia.es or relative URLs starting with /
         external_domains = [
             'whatsapp.com', 'api.whatsapp.com',
-            'facebook.com', 'fb.com',
-            'twitter.com', 'x.com',
-            'linkedin.com',
+            'facebook.com', 'fb.com', 'sharer.php',
+            'twitter.com', 'x.com', 'intent/tweet',
+            'linkedin.com', 'shareArticle',
             'pinterest.com',
-            'telegram.org', 't.me',
-            'mailto:', 'javascript:',
+            'telegram.org', 'telegram.me', 't.me',
+            'reddit.com',
+            'mailto:', 'javascript:', 'tel:',
+            '/share', 'share/url', 'share?',
         ]
         for domain in external_domains:
             if domain in href_lower:
