@@ -169,6 +169,48 @@ class SolviaScraper(SeleniumBaseScraper):
         text = text.replace(' ', '-')
         return text
 
+    def _is_property_detail_url(self, href: str) -> bool:
+        """Check if URL is a property detail page, not a navigation/category link."""
+        if not href:
+            return False
+
+        # Property detail URLs typically contain:
+        # - /vivienda/ or /activo/ followed by more path segments
+        # - A numeric ID somewhere in the URL
+        # - Patterns like piso-en-venta, casa-en-venta, etc.
+
+        # Exclude navigation/category URLs (province or city listings)
+        # These have pattern: /es/comprar/viviendas/{province} or /es/comprar/viviendas/{province}/{city}
+        # But NOT property details which have more path segments
+
+        # Count path segments after /viviendas/
+        if '/viviendas/' in href:
+            after_viviendas = href.split('/viviendas/')[-1]
+            segments = [s for s in after_viviendas.split('/') if s]
+            # Category URLs have 1-2 segments (province, city)
+            # Property URLs have more segments or contain numeric IDs
+            if len(segments) <= 2 and not re.search(r'\d{4,}', after_viviendas):
+                return False  # This is a category link, not a property
+
+        # Must contain property indicators
+        property_patterns = [
+            r'/vivienda/',
+            r'/activo/',
+            r'/inmueble/',
+            r'piso-en-',
+            r'casa-en-',
+            r'apartamento-',
+            r'chalet-',
+            r'duplex-',
+            r'\d{5,}',  # Property IDs are usually 5+ digits
+        ]
+
+        for pattern in property_patterns:
+            if re.search(pattern, href):
+                return True
+
+        return False
+
     def parse_listing_list(self, html: str) -> List[Dict[str, Any]]:
         """Parsea la página de listado de Solvia."""
         soup = BeautifulSoup(html, 'html.parser')
@@ -198,15 +240,16 @@ class SolviaScraper(SeleniumBaseScraper):
         # If no items found, try to find property links directly
         if not items:
             self.logger.warning("Solvia: No item containers found, trying direct link extraction")
-            all_links = soup.find_all('a', href=re.compile(r'/vivienda|/activo|/inmueble|/comprar'))
+            all_links = soup.find_all('a', href=True)
             for link in all_links:
                 href = link.get('href', '')
-                if href and len(href) > 20:
-                    listing = {'url': urljoin(self.base_url, href)}
+                if self._is_property_detail_url(href):
+                    full_url = urljoin(self.base_url, href)
+                    listing = {'url': full_url}
                     title = link.get_text(strip=True)
                     if title and len(title) > 5:
                         listing['title'] = title
-                    if listing.get('url') not in [l.get('url') for l in listings]:
+                    if full_url not in [l.get('url') for l in listings]:
                         listings.append(listing)
             self.logger.debug(f"Solvia: Extracted {len(listings)} URLs from direct links")
             return listings
@@ -214,7 +257,7 @@ class SolviaScraper(SeleniumBaseScraper):
         for item in items:
             try:
                 listing = self._parse_listing_item(item)
-                if listing.get('url'):
+                if listing.get('url') and self._is_property_detail_url(listing.get('url')):
                     listings.append(listing)
                     self.logger.debug(f"Solvia: Extracted URL: {listing.get('url')}")
             except Exception as e:
@@ -227,9 +270,10 @@ class SolviaScraper(SeleniumBaseScraper):
             all_links = soup.find_all('a', href=True)
             for link in all_links:
                 href = link.get('href', '')
-                if any(x in href for x in ['/vivienda', '/activo', '/inmueble', '/comprar']):
-                    if href not in [l.get('url') for l in listings]:
-                        listing = {'url': urljoin(self.base_url, href)}
+                if self._is_property_detail_url(href):
+                    full_url = urljoin(self.base_url, href)
+                    if full_url not in [l.get('url') for l in listings]:
+                        listing = {'url': full_url}
                         title = link.get_text(strip=True)
                         if title and len(title) > 5:
                             listing['title'] = title
