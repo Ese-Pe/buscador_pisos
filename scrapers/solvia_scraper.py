@@ -124,13 +124,15 @@ class SolviaScraper(SeleniumBaseScraper):
         """
         Construye URL de búsqueda de Solvia.
 
-        Formato: /es/comprar/viviendas/{province}
-        Ejemplo: /es/comprar/viviendas/zaragoza
+        Formato: /es/comprar/viviendas/{province}/{city}
+        Ejemplo: /es/comprar/viviendas/zaragoza/zaragoza
         """
         location = filters.get('location', {})
         province = location.get('province', '').lower()
+        city = location.get('city', '').lower()
 
         province = self._normalize_for_url(province)
+        city = self._normalize_for_url(city)
 
         operation = filters.get('operation_type', 'compra')
         if operation in ['compra', 'venta']:
@@ -138,8 +140,10 @@ class SolviaScraper(SeleniumBaseScraper):
         else:
             operation_path = 'alquilar'
 
-        # Solvia format: /es/comprar/viviendas/{province}
-        if province:
+        # Solvia format: /es/comprar/viviendas/{province}/{city}
+        if province and city:
+            url = f"{self.base_url}/es/{operation_path}/viviendas/{province}/{city}"
+        elif province:
             url = f"{self.base_url}/es/{operation_path}/viviendas/{province}"
         else:
             url = f"{self.base_url}/es/{operation_path}/viviendas"
