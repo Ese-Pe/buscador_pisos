@@ -181,14 +181,35 @@ class SolviaScraper(SeleniumBaseScraper):
 
         href_lower = href.lower()
 
-        # FIRST: Check if URL contains target location (e.g., 'zaragoza')
-        # This is the most important filter - reject URLs from other locations
+        # FIRST: Reject external URLs (social media share links, email, etc.)
+        # Only accept URLs from solvia.es or relative URLs starting with /
+        external_domains = [
+            'whatsapp.com', 'api.whatsapp.com',
+            'facebook.com', 'fb.com',
+            'twitter.com', 'x.com',
+            'linkedin.com',
+            'pinterest.com',
+            'telegram.org', 't.me',
+            'mailto:', 'javascript:',
+        ]
+        for domain in external_domains:
+            if domain in href_lower:
+                self.logger.debug(f"Solvia: Rejecting URL (external/share link): {href}")
+                return False
+
+        # Must be a solvia.es URL or relative path
+        if href_lower.startswith('http'):
+            if 'solvia.es' not in href_lower:
+                self.logger.debug(f"Solvia: Rejecting URL (not solvia.es): {href}")
+                return False
+
+        # SECOND: Check if URL contains target location (e.g., 'zaragoza')
         if self._target_location:
             if self._target_location not in href_lower:
                 self.logger.debug(f"Solvia: Rejecting URL (wrong location): {href}")
                 return False
 
-        # SECOND: Exclude navigation/category URLs (province or city listings)
+        # THIRD: Exclude navigation/category URLs (province or city listings)
         # These have pattern: /es/comprar/viviendas/{province} or /viviendas/{province}/{city}
         if '/viviendas/' in href_lower:
             after_viviendas = href_lower.split('/viviendas/')[-1]
@@ -198,13 +219,14 @@ class SolviaScraper(SeleniumBaseScraper):
                 self.logger.debug(f"Solvia: Rejecting URL (category link): {href}")
                 return False
 
-        # THIRD: Must contain property indicators (detail page patterns)
+        # FOURTH: Must contain property indicators (detail page patterns)
         property_patterns = [
             r'/vivienda/',
             r'/activo/',
             r'/inmueble/',
-            r'piso-en-',
-            r'casa-en-',
+            r'/propiedades/',
+            r'piso-',
+            r'casa-',
             r'apartamento-',
             r'chalet-',
             r'duplex-',
